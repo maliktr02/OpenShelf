@@ -1,0 +1,137 @@
+/* ═══════════════════════════════════════════════════════════
+ * OpenShelf — layout.css
+ * Top bar, toolbar, shelf views (grid / shelf / list), footer.
+ * ═══════════════════════════════════════════════════════════ */
+
+/* ── Top bar ── */
+.topbar {
+  position: sticky; top: 0; z-index: 120;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .85rem 1.6rem;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: saturate(160%) blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: .8rem; min-width: 0; }
+.brand-mark {
+  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px;
+  background: var(--grad); color: #fff; box-shadow: var(--shadow-accent); flex: none;
+}
+.brand-mark svg { width: 22px; height: 22px; }
+.brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.brand-name { font-family: var(--font-display); font-weight: 700; font-size: 1.4rem; }
+.brand-tag { font-size: .74rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.topbar-right { display: flex; align-items: center; gap: 1.1rem; }
+.clock {
+  display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-radius: var(--radius-full);
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
+  font-size: .78rem; font-variant-numeric: tabular-nums;
+}
+.clock svg { width: 14px; height: 14px; color: var(--accent); }
+.clock svg + span { margin-inline-end: .4rem; }
+.topbar-actions { display: flex; gap: .35rem; }
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex; flex-direction: column; gap: .7rem;
+  padding: .9rem 1.6rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.toolbar-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.toolbar-row-end { justify-content: flex-end; }
+
+.search {
+  position: relative; display: flex; align-items: center; flex: 1 1 260px; min-width: 200px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-full);
+  transition: border-color var(--dur), box-shadow var(--dur), background var(--dur);
+}
+.search:focus-within { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 4px var(--accent-softer); }
+.search > svg { position: absolute; inset-inline-start: 14px; width: 17px; height: 17px; color: var(--faint); pointer-events: none; }
+.search input[type="text"] {
+  flex: 1; min-width: 0; border: none; background: transparent; height: 42px; padding-inline: 42px 40px;
+  color: var(--text); font-size: .9rem; outline: none; border-radius: var(--radius-full);
+}
+.search input[type="text"]:focus { box-shadow: none; background: transparent; }
+.search-hint {
+  position: absolute; inset-inline-end: 10px; font-size: .72rem; color: var(--faint);
+  border: 1px solid var(--border-strong); border-radius: 6px; padding: 0 6px; background: var(--surface);
+}
+.result-count { color: var(--muted); font-size: .82rem; margin-inline-end: auto; }
+
+/* ── Stage / shelf ── */
+.stage { flex: 1; padding: 1.6rem; }
+.shelf { animation: fade-up .4s var(--ease) both; }
+
+body[data-view="grid"] .shelf {
+  display: grid; gap: 1.4rem;
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 190px), 1fr));
+}
+body[data-card-size="compact"] { --card-min: 150px; }
+body[data-card-size="large"] { --card-min: 240px; }
+body[data-density="compact"] .shelf { gap: 1rem; }
+
+/* Spine / bookshelf view */
+body[data-view="shelf"] .shelf {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 7px;
+  padding: 1.6rem 1rem 2.2rem;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, transparent 60%, color-mix(in srgb, var(--accent) 5%, transparent)),
+    var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm) inset;
+}
+
+/* List / table view */
+body[data-view="list"] .shelf { display: flex; flex-direction: column; gap: 0; }
+body[data-view="list"] .shelf {
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Empty state ── */
+.empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 4rem 1.5rem; gap: .5rem; animation: fade-up .4s var(--ease) both;
+}
+.empty-art {
+  width: 108px; height: 108px; border-radius: 30px; display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent); margin-bottom: .6rem;
+}
+.empty-art svg { width: 52px; height: 52px; }
+.empty h2 { font-size: 1.5rem; }
+.empty p { color: var(--muted); max-width: 42ch; }
+.empty .btn { margin-top: 1rem; }
+
+/* ── Footer ── */
+.site-foot {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .5rem;
+  padding: 1.4rem 1.5rem; color: var(--muted); font-size: .8rem;
+  border-top: 1px solid var(--border); background: var(--surface);
+}
+.site-foot .dot { color: var(--faint); }
+.site-foot a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.site-foot a:hover { text-decoration: underline; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .brand-tag { display: none; }
+  .clock { display: none; }
+}
+@media (max-width: 720px) {
+  .topbar { padding: .7rem 1rem; }
+  .toolbar { padding: .75rem 1rem; }
+  .stage { padding: 1rem; }
+  .search-hint { display: none; }
+  .toolbar-row .select-wrapper { flex: 1 1 42%; }
+  .toolbar-row .select-wrapper select { width: 100%; }
+  body[data-view="grid"] .shelf { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; }
+  .result-count { width: 100%; }
+  .toolbar-row-end { justify-content: space-between; }
+}
+
+/* Entrance animation for cards when animations are enabled */
+body:not(.no-anim) .book-card { animation: pop-in .42s var(--ease) both; }
+body:not(.no-anim) .spine { animation: fade-up .4s var(--ease) both; }

@@ -1,0 +1,181 @@
+/* ═══════════════════════════════════════════════════════════
+ * OpenShelf — base.css
+ * Design tokens, themes, reset, typography, utilities, keyframes.
+ * ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* Accent (overridden at runtime from settings) */
+  --accent: #6366f1;
+  --accent-2: #a855f7;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-softer: color-mix(in srgb, var(--accent) 7%, transparent);
+  --grad: linear-gradient(135deg, var(--accent), var(--accent-2));
+
+  /* Surfaces */
+  --bg: #f5f7fc;
+  --bg-glow-1: color-mix(in srgb, var(--accent) 22%, transparent);
+  --bg-glow-2: color-mix(in srgb, var(--accent-2) 18%, transparent);
+  --surface: #ffffff;
+  --surface-2: #f1f3fa;
+  --surface-3: #e9ecf6;
+  --text: #1a2032;
+  --muted: #6a7387;
+  --faint: #98a0b3;
+  --border: #e6e9f2;
+  --border-strong: #d5dae8;
+
+  /* Feedback */
+  --gold: #f5a524;
+  --danger: #ef4444;
+  --danger-soft: color-mix(in srgb, var(--danger) 12%, transparent);
+  --success: #10b981;
+
+  /* Shape & depth */
+  --radius-xs: 8px;
+  --radius-sm: 11px;
+  --radius: 16px;
+  --radius-lg: 22px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 2px rgba(20, 27, 50, .06), 0 1px 3px rgba(20, 27, 50, .05);
+  --shadow-md: 0 6px 18px -6px rgba(20, 27, 50, .18), 0 2px 6px rgba(20, 27, 50, .06);
+  --shadow-lg: 0 24px 60px -18px rgba(20, 27, 50, .34), 0 8px 24px -12px rgba(20, 27, 50, .18);
+  --shadow-accent: 0 10px 26px -10px color-mix(in srgb, var(--accent) 65%, transparent);
+
+  /* Type */
+  --font-ui: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+
+  /* Motion */
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --dur: .28s;
+
+  color-scheme: light;
+}
+
+body[data-font="serif"] { --font-ui: 'Fraunces', Georgia, serif; }
+
+/* ── Themes ── */
+body[data-theme="dark"] {
+  --bg: #0d1220;
+  --surface: #151b2c;
+  --surface-2: #1b2236;
+  --surface-3: #232c44;
+  --text: #eef1f8;
+  --muted: #98a2b8;
+  --faint: #6c7690;
+  --border: #262f47;
+  --border-strong: #333d59;
+  --shadow-lg: 0 24px 60px -18px rgba(0, 0, 0, .7);
+  color-scheme: dark;
+}
+
+body[data-theme="sepia"] {
+  --bg: #f6efe0;
+  --surface: #fffaf0;
+  --surface-2: #f3ead7;
+  --surface-3: #ece0c8;
+  --text: #40372a;
+  --muted: #7c6f59;
+  --faint: #a1927a;
+  --border: #e7dcc4;
+  --border-strong: #d8cbb0;
+  color-scheme: light;
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+h1, h2, h3, h4, h5, h6, p, figure, dl, dd, dt { margin: 0; }
+button { font: inherit; color: inherit; }
+img { display: block; max-width: 100%; }
+a { color: var(--accent); }
+
+body {
+  min-height: 100vh;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(60rem 40rem at 110% -10%, var(--bg-glow-1), transparent 60%),
+    radial-gradient(50rem 36rem at -10% 0%, var(--bg-glow-2), transparent 55%);
+  background-attachment: fixed;
+  display: flex;
+  flex-direction: column;
+  transition: background-color var(--dur), color var(--dur);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+[dir="rtl"] body, body[dir="rtl"] { direction: rtl; }
+
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 600; letter-spacing: -.01em; }
+
+/* ── Utilities ── */
+.hidden { display: none !important; }
+.muted { color: var(--muted); }
+.brand-gradient {
+  background: var(--grad);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.no-anim *, .no-anim *::before, .no-anim *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+}
+
+/* ── Scrollbars ── */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong); border-radius: 99px; border: 3px solid transparent; background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; }
+
+/* ── Keyframes ── */
+@keyframes fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes pop-in { 0% { opacity: 0; transform: scale(.96) translateY(8px); } 100% { opacity: 1; transform: none; } }
+@keyframes float-book { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-10px) rotate(3deg); } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes bar-grow { from { width: 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 var(--accent-soft); } 70% { box-shadow: 0 0 0 12px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* ── Startup animation ── */
+.startup {
+  position: fixed; inset: 0; z-index: 9999;
+  display: grid; place-items: center;
+  background: var(--bg);
+  background-image:
+    radial-gradient(40rem 30rem at 50% 0%, var(--bg-glow-1), transparent 60%);
+  transition: opacity .6s var(--ease), visibility .6s var(--ease);
+}
+.startup.done { opacity: 0; visibility: hidden; }
+.startup-inner { display: flex; flex-direction: column; align-items: center; gap: .65rem; }
+.startup-book {
+  width: 74px; height: 54px; position: relative; margin-bottom: 1rem;
+  animation: float-book 3.2s ease-in-out infinite;
+}
+.startup-book span {
+  position: absolute; bottom: 0; width: 22px; border-radius: 3px 3px 2px 2px;
+  background: var(--grad); box-shadow: var(--shadow-accent);
+}
+.startup-book span:nth-child(1) { left: 0; height: 44px; }
+.startup-book span:nth-child(2) { left: 26px; height: 54px; animation-delay: .15s; }
+.startup-book span:nth-child(3) { left: 52px; height: 40px; }
+.startup-title { font-size: 2.1rem; }
+.startup-sub { color: var(--muted); font-size: .9rem; }
+.startup-bar {
+  width: 180px; height: 4px; border-radius: 99px; margin-top: .75rem;
+  background: var(--surface-3); overflow: hidden;
+}
+.startup-bar i {
+  display: block; height: 100%; width: 40%; border-radius: 99px; background: var(--grad);
+  animation: shimmer 1.2s infinite ease-in-out;
+  background-size: 200% 100%;
+  background-image: linear-gradient(90deg, transparent, var(--accent), transparent);
+}

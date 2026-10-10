@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="OpenShelf — a local-first, open-source digital bookshelf to catalogue your personal library.">
+  <meta name="theme-color" content="#6366f1">
+  <title>OpenShelf</title>
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-theme="light" data-font="sans">
+
+  <!-- ═══ Startup animation ═══ -->
+  <div id="startupLoader" class="startup">
+    <div class="startup-inner">
+      <div class="startup-book">
+        <span></span><span></span><span></span>
+      </div>
+      <h1 class="brand-gradient startup-title">OpenShelf</h1>
+      <p class="startup-sub" data-i18n="app.tagline">Your local-first digital bookshelf</p>
+      <div class="startup-bar"><i></i></div>
+    </div>
+  </div>
+
+  <!-- ═══ Top bar ═══ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark"><i data-lucide="book-open"></i></span>
+      <div class="brand-text">
+        <span class="brand-name brand-gradient">OpenShelf</span>
+        <span class="brand-tag" data-i18n="app.tagline">Your local-first digital bookshelf</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="clock" aria-hidden="true">
+        <i data-lucide="calendar"></i><span id="clockDate"></span>
+        <i data-lucide="clock"></i><span id="clockTime"></span>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" class="icon-btn" id="infoBtn" data-i18n-title="nav.info" data-i18n-aria="nav.info"><i data-lucide="info"></i></button>
+        <button type="button" class="icon-btn" id="statsBtn" data-i18n-title="nav.stats" data-i18n-aria="nav.stats"><i data-lucide="bar-chart-3"></i></button>
+        <button type="button" class="icon-btn" id="settingsBtn" data-i18n-title="nav.settings" data-i18n-aria="nav.settings"><i data-lucide="settings"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ Toolbar ═══ -->
+  <div class="toolbar">
+    <div class="toolbar-row">
+      <label class="search">
+        <i data-lucide="search"></i>
+        <input type="text" id="searchInput" data-i18n-placeholder="search.placeholder" placeholder="Search title, author, notes…">
+        <span class="search-hint">/</span>
+      </label>
+
+      <div class="select-wrapper">
+        <select id="filterAuthor"><option value="">All authors</option></select>
+        <i data-lucide="chevron-down"></i>
+      </div>
+      <div class="select-wrapper">
+        <select id="filterLang"><option value="">All languages</option></select>
+        <i data-lucide="chevron-down"></i>
+      </div>
+      <div class="select-wrapper">
+        <select id="filterRating">
+          <option value="" data-i18n="filters.allRatings">All ratings</option>
+          <option value="5" data-i18n="rating.5">5 stars</option>
+          <option value="4" data-i18n="rating.4">4+ stars</option>
+          <option value="3" data-i18n="rating.3">3+ stars</option>
+        </select>
+        <i data-lucide="chevron-down"></i>
+      </div>
+      <div class="select-wrapper">
+        <select id="filterPrice"><option value="" data-i18n="filters.allPrices">Any price</option></select>
+        <i data-lucide="chevron-down"></i>
+      </div>
+      <div class="select-wrapper">
+        <select id="sortData">
+          <option value="newest" data-i18n="sort.newest">Newest first</option>
+          <option value="oldest" data-i18n="sort.oldest">Oldest first</option>
+          <option value="titleAZ" data-i18n="sort.titleAZ">Title A → Z</option>
+          <option value="titleZA" data-i18n="sort.titleZA">Title Z → A</option>
+          <option value="rating" data-i18n="sort.rating">Highest rated</option>
+          <option value="pages" data-i18n="sort.pages">Most pages</option>
+          <option value="price" data-i18n="sort.price">Highest price</option>
+        </select>
+        <i data-lucide="chevron-down"></i>
+      </div>
+      <button type="button" class="icon-btn" id="clearFiltersBtn" data-i18n-title="action.clear" data-i18n-aria="action.clear"><i data-lucide="filter-x"></i></button>
+    </div>
+
+    <div class="toolbar-row toolbar-row-end">
+      <span class="result-count" id="resultCount"></span>
+      <div class="segmented" role="group">
+        <button type="button" class="view-btn active" data-view="grid" data-i18n-title="view.grid" data-i18n-aria="view.grid"><i data-lucide="layout-grid"></i></button>
+        <button type="button" class="view-btn" data-view="shelf" data-i18n-title="view.shelf" data-i18n-aria="view.shelf"><i data-lucide="library"></i></button>
+        <button type="button" class="view-btn" data-view="list" data-i18n-title="view.list" data-i18n-aria="view.list"><i data-lucide="list"></i></button>
+      </div>
+      <button type="button" class="btn btn-primary" id="addBookBtn">
+        <i data-lucide="plus"></i><span data-i18n="action.addBook">Add book</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ Shelf ═══ -->
+  <main class="stage">
+    <div id="shelf" class="shelf view-grid"></div>
+    <div id="emptyState" class="empty hidden">
+      <div class="empty-art"><i data-lucide="book-dashed"></i></div>
+      <h2 data-i18n="empty.title">Your shelf is empty</h2>
+      <p data-i18n="empty.subtitle">Add your first book to begin building your personal library.</p>
+      <button type="button" class="btn btn-primary btn-lg" id="emptyAddBtn">
+        <i data-lucide="plus"></i><span data-i18n="empty.cta">Add your first book</span>
+      </button>
+    </div>
+  </main>
+
+  <!-- ═══ Footer ═══ -->
+  <footer class="site-foot">
+    <span>OpenShelf</span>
+    <span class="dot">·</span>
+    <span data-i18n="info.tech">Built with vanilla HTML, CSS and JavaScript.</span>
+    <span class="dot">·</span>
+    <a href="https://github.com/maliktr02/OpenShelf" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+
+  <!-- ═══════════ Book modal ═══════════ -->
+  <div id="bookModal" class="modal">
+    <div class="modal-panel modal-xl" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h2><i data-lucide="book-plus"></i><span id="modalTitle" data-i18n="action.addBook">Add book</span></h2>
+        <button type="button" class="icon-btn" data-close data-i18n-aria="action.close"><i data-lucide="x"></i></button>
+      </header>
+
+      <form id="bookForm" class="modal-body form" novalidate>
+        <!-- Title -->
+        <section class="form-card">
+          <h3><i data-lucide="type"></i><span data-i18n="section.title">Title</span></h3>
+          <div class="field-grid">
+            <div class="field span-2">
+              <label for="titleMain"><span data-i18n="field.mainTitle">Main title</span> <em data-i18n="hint.required">required</em></label>
+              <input type="text" id="titleMain" required>
+            </div>
+            <div class="field span-2">
+              <label><span data-i18n="book.titles">Titles</span> <em data-i18n="hint.optional">optional</em></label>
+              <div id="translationsContainer" class="translations"></div>
+              <button type="button" class="btn btn-ghost btn-sm" id="addTranslationBtn">
+                <i data-lucide="plus"></i><span data-i18n="action.addTranslation">Add translation</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Author -->
+        <section class="form-card">
+          <h3><i data-lucide="user-round"></i><span data-i18n="section.author">Author</span></h3>
+          <div class="field-grid">
+            <div class="field span-2">
+              <label for="authorName"><span data-i18n="field.authorName">Author name</span> <em data-i18n="hint.required">required</em></label>
+              <input type="text" id="authorName" required>
+            </div>
+            <div class="field">
+              <label for="authorBirthYear"><span data-i18n="field.birthYear">Birth year</span> <em data-i18n="hint.optional">optional</em></label>
+              <input type="number" id="authorBirthYear" min="0" max="2100">
+            </div>
+            <div class="field">
+              <label for="authorDeathYear"><span data-i18n="field.deathYear">Death year</span> <em data-i18n="hint.optional">optional</em></label>
+              <input type="number" id="authorDeathYear" min="0" max="2100">
+            </div>
+            <div class="field span-2">
+              <label for="authorEthnicity"><span data-i18n="field.ethnicity">Ethnicity / nationality</span> <em data-i18n="hint.optional">optional</em></label>
+              <input type="text" id="authorEthnicity">
+            </div>
+          </div>
+        </section>
+
+        <!-- Details -->
+        <section class="form-card">
+          <h3><i data-lucide="bookmark"></i><span data-i18n="section.details">Book details</span></h3>
+          <div class="field-grid">
+            <div class="field">
+              <label for="pageCount"><span data-i18n="field.pageCount">Page count</span> <em data-i18n="hint.required">required</em></label>
+              <input type="number" id="pageCount" min="1" required>
+            </div>
+            <div class="field">
+              <label for="language" data-i18n="field.language">Literary language</label>
+              <div class="select-wrapper">
+                <select id="language"></select><i data-lucide="chevron-down"></i>
+              </div>
+            </div>
+            <div class="field">
+              <label for="genre"><span data-i18n="field.genre">Genre</span> <em data-i18n="hint.optional">optional</em></label>
+              <input type="text" id="genre">
+            </div>
+            <div class="field">
+              <label data-i18n="field.price">Price</label>
+              <div class="price-field">
+                <input type="number" id="priceAmount" step="0.01" min="0" placeholder="0.00">
+                <div class="select-wrapper">
+                  <select id="priceCurrency"></select><i data-lucide="chevron-down"></i>
+                </div>
+              </div>
+            </div>
+            <div class="field span-2">
+              <label data-i18n="field.rating">Rating</label>
+              <div id="starRatingInput" class="star-input">
+                <i data-lucide="star" class="star-icon" data-val="1"></i>
+                <i data-lucide="star" class="star-icon" data-val="2"></i>
+                <i data-lucide="star" class="star-icon" data-val="3"></i>
+                <i data-lucide="star" class="star-icon" data-val="4"></i>
+                <i data-lucide="star" class="star-icon" data-val="5"></i>
+              </div>
+              <input type="hidden" id="rating" value="0">
+            </div>
+          </div>
+        </section>
+
+        <!-- Additional -->
+        <section class="form-card">
+          <h3><i data-lucide="sparkles"></i><span data-i18n="section.additional">Additional information</span></h3>
+          <div class="field-grid">
+            <div class="field span-2">
+              <label for="notes"><span data-i18n="field.notes">Notes</span> <em data-i18n="hint.optional">optional</em></label>
+              <textarea id="notes" rows="3"></textarea>
+            </div>
+
+            <div class="field">
+              <label><span data-i18n="field.frontCover">Front cover</span> <em data-i18n="hint.optional">optional</em></label>
+              <div class="image-field">
+                <img id="photoFrontPreview" class="image-preview hidden" alt="">
+                <div class="image-controls">
+                  <input type="url" id="photoFront" data-i18n-placeholder="field.coverUrl" placeholder="Image URL">
+                  <div class="image-buttons">
+                    <button type="button" class="btn btn-soft btn-sm" id="photoFrontPick"><i data-lucide="upload"></i><span data-i18n="action.uploadImage">Upload image</span></button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="photoFrontClear"><i data-lucide="eraser"></i><span data-i18n="action.clear">Clear</span></button>
+                  </div>
+                </div>
+                <input type="file" id="photoFrontFile" accept="image/*" class="hidden">
+              </div>
+            </div>
+
+            <div class="field">
+              <label><span data-i18n="field.spineCover">Spine / side view</span> <em data-i18n="hint.optional">optional</em></label>
+              <div class="image-field">
+                <img id="photoSpinePreview" class="image-preview hidden" alt="">
+                <div class="image-controls">
+                  <input type="url" id="photoSpine" data-i18n-placeholder="field.coverUrl" placeholder="Image URL">
+                  <div class="image-buttons">
+                    <button type="button" class="btn btn-soft btn-sm" id="photoSpinePick"><i data-lucide="upload"></i><span data-i18n="action.uploadImage">Upload image</span></button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="photoSpineClear"><i data-lucide="eraser"></i><span data-i18n="action.clear">Clear</span></button>
+                  </div>
+                </div>
+                <input type="file" id="photoSpineFile" accept="image/*" class="hidden">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="modal-actions">
+          <button type="button" class="btn btn-soft" data-close data-i18n="action.cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-lg"><i data-lucide="save"></i><span data-i18n="action.saveBook">Save book</span></button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════ Settings modal ═══════════ -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h2><i data-lucide="settings"></i><span data-i18n="settings.title">Settings</span></h2>
+        <button type="button" class="icon-btn" data-close data-i18n-aria="action.close"><i data-lucide="x"></i></button>
+      </header>
+      <div class="modal-body">
+        <section class="settings-group">
+          <h3><i data-lucide="palette"></i><span data-i18n="settings.appearance">Appearance</span></h3>
+          <div class="setting-row">
+            <label data-i18n="settings.theme">Theme</label>
+            <div class="segmented theme-seg">
+              <label class="seg-opt"><input type="radio" name="theme" value="light"><i data-lucide="sun"></i><span data-i18n="settings.themeLight">Light</span></label>
+              <label class="seg-opt"><input type="radio" name="theme" value="dark"><i data-lucide="moon"></i><span data-i18n="settings.themeDark">Dark</span></label>
+              <label class="seg-opt"><input type="radio" name="theme" value="sepia"><i data-lucide="coffee"></i><span data-i18n="settings.themeSepia">Sepia</span></label>
+              <label class="seg-opt"><input type="radio" name="theme" value="auto"><i data-lucide="monitor-smartphone"></i><span data-i18n="settings.themeAuto">Auto</span></label>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="settings.accent">Accent color</label>
+            <div class="accent-control">
+              <div id="accentSwatches" class="swatches"></div>
+              <input type="color" id="accentColorPicker" value="#6366f1">
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="settings.font">Typeface</label>
+            <div class="select-wrapper">
+              <select id="fontSelect">
+                <option value="sans" data-i18n="settings.fontSans">Modern sans</option>
+                <option value="serif" data-i18n="settings.fontSerif">Classic serif</option>
+              </select><i data-lucide="chevron-down"></i>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="settings.cardSize">Card size</label>
+            <div class="select-wrapper">
+              <select id="cardSizeSelect">
+                <option value="compact" data-i18n="settings.sizeCompact">Compact</option>
+                <option value="normal" data-i18n="settings.sizeNormal">Normal</option>
+                <option value="large" data-i18n="settings.sizeLarge">Large</option>
+              </select><i data-lucide="chevron-down"></i>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="settings.density">Layout density</label>
+            <div class="select-wrapper">
+              <select id="densitySelect">
+                <option value="comfortable" data-i18n="settings.densityComfortable">Comfortable</option>
+                <option value="compact" data-i18n="settings.densityCompact">Compact</option>
+              </select><i data-lucide="chevron-down"></i>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="settings.animations">Animations</label>
+            <div class="select-wrapper">
+              <select id="animationsSelect">
+                <option value="true" data-i18n="settings.animationsOn">Enabled</option>
+                <option value="false" data-i18n="settings.animationsOff">Disabled</option>
+              </select><i data-lucide="chevron-down"></i>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-group">
+          <h3><i data-lucide="globe"></i><span data-i18n="settings.localization">Language &amp; region</span></h3>
+          <div class="setting-row">
+            <label data-i18n="settings.uiLanguage">Interface language</label>
+            <div class="select-wrapper">
+              <select id="uiLanguageSelect"></select><i data-lucide="chevron-down"></i>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="settings.baseCurrency">Base currency</label>
+            <div class="select-wrapper">
+              <select id="baseCurrencySelect"></select><i data-lucide="chevron-down"></i>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-group">
+          <h3><i data-lucide="database"></i><span data-i18n="settings.data">Data management</span></h3>
+          <p class="setting-note" data-i18n="settings.dataDescription">Your data never leaves this device. Back it up or move it freely.</p>
+          <div class="btn-row">
+            <button type="button" class="btn btn-soft" id="exportDataBtn"><i data-lucide="download"></i><span data-i18n="settings.exportData">Export backup</span></button>
+            <button type="button" class="btn btn-soft" id="importDataBtn"><i data-lucide="upload"></i><span data-i18n="settings.importData">Import backup</span></button>
+            <input type="file" id="importDataInput" accept=".json" class="hidden">
+          </div>
+          <div class="folder-block">
+            <div class="folder-block-head">
+              <strong data-i18n="settings.folder">Data folder</strong>
+              <span id="folderStatus" class="muted" data-i18n="settings.folderHint">Optionally sync books.json &amp; settings.json to a folder on your disk.</span>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn btn-soft" id="connectFolderBtn"><i data-lucide="folder-plus"></i><span data-i18n="action.connectFolder">Connect data folder</span></button>
+              <button type="button" class="btn btn-ghost hidden" id="disconnectFolderBtn"><i data-lucide="unlink"></i><span data-i18n="settings.disconnect">Disconnect</span></button>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn btn-danger-ghost" id="resetSettingsBtn"><i data-lucide="rotate-ccw"></i><span data-i18n="settings.resetSettings">Reset all settings</span></button>
+          </div>
+        </section>
+
+        <footer class="modal-actions">
+          <button type="button" class="btn btn-soft" data-close data-i18n="action.cancel">Cancel</button>
+          <button type="button" class="btn btn-primary btn-lg" id="saveSettingsBtn"><i data-lucide="check"></i><span data-i18n="action.save">Save</span></button>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ Stats modal ═══════════ -->
+  <div id="statsModal" class="modal">
+    <div class="modal-panel modal-lg" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h2><i data-lucide="bar-chart-3"></i><span data-i18n="stats.title">Statistics</span></h2>
+        <button type="button" class="icon-btn" data-close data-i18n-aria="action.close"><i data-lucide="x"></i></button>
+      </header>
+      <div class="modal-body">
+        <div id="statsContainer" class="stats"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ Info modal ═══════════ -->
+  <div id="infoModal" class="modal">
+    <div class="modal-panel modal-sm" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h2><i data-lucide="info"></i><span data-i18n="info.about">About OpenShelf</span></h2>
+        <button type="button" class="icon-btn" data-close data-i18n-aria="action.close"><i data-lucide="x"></i></button>
+      </header>
+      <div class="modal-body info-body">
+        <div class="info-badge"><i data-lucide="book-open"></i></div>
+        <h3 class="brand-gradient info-name">OpenShelf</h3>
+        <p class="muted" data-i18n="info.description">A local-first digital bookshelf application.</p>
+
+        <dl class="info-meta">
+          <div><dt data-i18n="info.developer">Developer</dt><dd>maliktr02</dd></div>
+          <div><dt data-i18n="info.version">Version</dt><dd>2.0.0</dd></div>
+          <div><dt data-i18n="info.license">License</dt><dd>MIT</dd></div>
+          <div><dt data-i18n="info.repository">Repository</dt>
+            <dd><a href="https://github.com/maliktr02/OpenShelf" target="_blank" rel="noopener">github.com/maliktr02/OpenShelf</a></dd></div>
+        </dl>
+
+        <div class="info-privacy">
+          <h4><i data-lucide="shield-check"></i><span data-i18n="info.privacy">Privacy</span></h4>
+          <p data-i18n="info.privacyText">OpenShelf runs entirely in your browser.</p>
+        </div>
+
+        <a class="btn btn-primary repo-btn" href="https://github.com/maliktr02/OpenShelf" target="_blank" rel="noopener">
+          <i data-lucide="git-fork"></i><span data-i18n="info.viewOnGitHub">View on GitHub</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ Confirm modal ═══════════ -->
+  <div id="confirmModal" class="modal">
+    <div class="modal-panel modal-xs" role="alertdialog" aria-modal="true">
+      <header class="modal-head">
+        <h2><i data-lucide="alert-triangle"></i><span id="confirmTitle">Delete book</span></h2>
+      </header>
+      <div class="modal-body">
+        <p id="confirmText" class="confirm-text"></p>
+        <footer class="modal-actions">
+          <button type="button" class="btn btn-soft" id="confirmCancel"><span id="confirmCancelLabel">Cancel</span></button>
+          <button type="button" class="btn btn-danger" id="confirmOk"><span id="confirmOkLabel">Confirm</span></button>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div id="toastHost" class="toast-host"></div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/currency.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
