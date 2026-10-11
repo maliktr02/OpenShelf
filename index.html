@@ -23,13 +23,20 @@
 
   <!-- ═══ Startup animation ═══ -->
   <div id="startupLoader" class="startup">
+    <div class="startup-glow" aria-hidden="true"></div>
     <div class="startup-inner">
-      <div class="startup-book">
+      <div class="startup-book" aria-hidden="true">
         <span></span><span></span><span></span>
+        <em></em>
       </div>
       <h1 class="brand-gradient startup-title">OpenShelf</h1>
       <p class="startup-sub" data-i18n="app.tagline">Your local-first digital bookshelf</p>
-      <div class="startup-bar"><i></i></div>
+      <div class="startup-bar"><i id="startupBar"></i></div>
+      <div class="startup-meta">
+        <span id="startupTask" class="startup-task"></span>
+        <span id="startupPct" class="startup-pct">0%</span>
+      </div>
+      <span id="startupVersion" class="startup-version"></span>
     </div>
   </div>
 
@@ -83,6 +90,14 @@
         <i data-lucide="chevron-down"></i>
       </div>
       <div class="select-wrapper">
+        <select id="filterSeries"><option value="" data-i18n="filters.allSeries">All series</option></select>
+        <i data-lucide="chevron-down"></i>
+      </div>
+      <div class="select-wrapper">
+        <select id="filterTag"><option value="" data-i18n="filters.allTags">All tags</option></select>
+        <i data-lucide="chevron-down"></i>
+      </div>
+      <div class="select-wrapper">
         <select id="filterPrice"><option value="" data-i18n="filters.allPrices">Any price</option></select>
         <i data-lucide="chevron-down"></i>
       </div>
@@ -95,6 +110,7 @@
           <option value="rating" data-i18n="sort.rating">Highest rated</option>
           <option value="pages" data-i18n="sort.pages">Most pages</option>
           <option value="price" data-i18n="sort.price">Highest price</option>
+          <option value="series" data-i18n="section.series">Series</option>
         </select>
         <i data-lucide="chevron-down"></i>
       </div>
@@ -106,6 +122,7 @@
       <div class="segmented" role="group">
         <button type="button" class="view-btn active" data-view="grid" data-i18n-title="view.grid" data-i18n-aria="view.grid"><i data-lucide="layout-grid"></i></button>
         <button type="button" class="view-btn" data-view="shelf" data-i18n-title="view.shelf" data-i18n-aria="view.shelf"><i data-lucide="library"></i></button>
+        <button type="button" class="view-btn" data-view="series" data-i18n-title="view.series" data-i18n-aria="view.series"><i data-lucide="layers"></i></button>
         <button type="button" class="view-btn" data-view="list" data-i18n-title="view.list" data-i18n-aria="view.list"><i data-lucide="list"></i></button>
       </div>
       <button type="button" class="btn btn-primary" id="addBookBtn">
@@ -126,15 +143,6 @@
       </button>
     </div>
   </main>
-
-  <!-- ═══ Footer ═══ -->
-  <footer class="site-foot">
-    <span>OpenShelf</span>
-    <span class="dot">·</span>
-    <span data-i18n="info.tech">Built with vanilla HTML, CSS and JavaScript.</span>
-    <span class="dot">·</span>
-    <a href="https://github.com/maliktr02/OpenShelf" target="_blank" rel="noopener">GitHub</a>
-  </footer>
 
   <!-- ═══════════ Book modal ═══════════ -->
   <div id="bookModal" class="modal">
@@ -227,6 +235,26 @@
           </div>
         </section>
 
+        <!-- Series & tags -->
+        <section class="form-card">
+          <h3><i data-lucide="layers"></i><span data-i18n="section.series">Series</span></h3>
+          <div class="field-grid">
+            <div class="field">
+              <label for="seriesName"><span data-i18n="field.seriesName">Series name</span> <em data-i18n="hint.optional">optional</em></label>
+              <input type="text" id="seriesName" list="seriesList" autocomplete="off">
+              <datalist id="seriesList"></datalist>
+            </div>
+            <div class="field">
+              <label for="seriesVolume"><span data-i18n="field.seriesVolume">Volume</span> <em data-i18n="hint.optional">optional</em></label>
+              <input type="number" id="seriesVolume" min="1" step="1">
+            </div>
+            <div class="field span-2">
+              <label for="tags"><span data-i18n="field.tags">Tags</span> <em data-i18n="hint.optional">optional</em></label>
+              <input type="text" id="tags" data-i18n-placeholder="field.tagsHint" placeholder="Separate tags with commas">
+            </div>
+          </div>
+        </section>
+
         <!-- Additional -->
         <section class="form-card">
           <h3><i data-lucide="sparkles"></i><span data-i18n="section.additional">Additional information</span></h3>
@@ -234,6 +262,14 @@
             <div class="field span-2">
               <label for="notes"><span data-i18n="field.notes">Notes</span> <em data-i18n="hint.optional">optional</em></label>
               <textarea id="notes" rows="3"></textarea>
+            </div>
+
+            <div class="field span-2">
+              <label><span data-i18n="field.quotes">Quotes</span> <em data-i18n="hint.optional">optional</em></label>
+              <div id="quotesContainer" class="quotes"></div>
+              <button type="button" class="btn btn-ghost btn-sm" id="addQuoteBtn">
+                <i data-lucide="quote"></i><span data-i18n="action.addQuote">Add quote</span>
+              </button>
             </div>
 
             <div class="field">
@@ -269,6 +305,7 @@
         </section>
 
         <footer class="modal-actions">
+          <button type="button" class="btn btn-ghost push-start" id="exportBookMdBtn" data-i18n-title="action.exportMd" title="Export as Markdown"><i data-lucide="file-text"></i><span data-i18n="action.exportMd">Export as Markdown</span></button>
           <button type="button" class="btn btn-soft" data-close data-i18n="action.cancel">Cancel</button>
           <button type="submit" class="btn btn-primary btn-lg"><i data-lucide="save"></i><span data-i18n="action.saveBook">Save book</span></button>
         </footer>
@@ -342,11 +379,28 @@
         </section>
 
         <section class="settings-group">
+          <h3><i data-lucide="layout-grid"></i><span data-i18n="settings.display">Shelf display</span></h3>
+          <p class="setting-note" data-i18n="settings.displayDescription">Choose which details appear on your book cards and list rows.</p>
+          <div class="display-toggles" id="displayToggles">
+            <label class="check-row"><input type="checkbox" data-display="rating"><span data-i18n="settings.showRating">Show ratings</span></label>
+            <label class="check-row"><input type="checkbox" data-display="price"><span data-i18n="settings.showPrice">Show prices</span></label>
+            <label class="check-row"><input type="checkbox" data-display="tags"><span data-i18n="settings.showTags">Show tags</span></label>
+            <label class="check-row"><input type="checkbox" data-display="series"><span data-i18n="settings.showSeries">Show series</span></label>
+            <label class="check-row"><input type="checkbox" data-display="language"><span data-i18n="settings.showLanguage">Show language</span></label>
+          </div>
+        </section>
+
+        <section class="settings-group">
           <h3><i data-lucide="globe"></i><span data-i18n="settings.localization">Language &amp; region</span></h3>
           <div class="setting-row">
             <label data-i18n="settings.uiLanguage">Interface language</label>
-            <div class="select-wrapper">
-              <select id="uiLanguageSelect"></select><i data-lucide="chevron-down"></i>
+            <div class="lang-select" id="uiLanguageControl">
+              <button type="button" class="lang-trigger" id="uiLangTrigger" aria-haspopup="listbox" aria-expanded="false">
+                <span class="lang-flag" id="uiLangFlag"></span>
+                <span class="lang-current" id="uiLangCurrent"></span>
+                <i data-lucide="chevron-down"></i>
+              </button>
+              <div class="lang-menu" id="uiLangMenu" role="listbox"></div>
             </div>
           </div>
           <div class="setting-row">
@@ -363,6 +417,7 @@
           <div class="btn-row">
             <button type="button" class="btn btn-soft" id="exportDataBtn"><i data-lucide="download"></i><span data-i18n="settings.exportData">Export backup</span></button>
             <button type="button" class="btn btn-soft" id="importDataBtn"><i data-lucide="upload"></i><span data-i18n="settings.importData">Import backup</span></button>
+            <button type="button" class="btn btn-soft" id="exportMarkdownBtn"><i data-lucide="file-text"></i><span data-i18n="action.exportMarkdown">Export Markdown</span></button>
             <input type="file" id="importDataInput" accept=".json" class="hidden">
           </div>
           <div class="folder-block">
@@ -414,22 +469,108 @@
         <p class="muted" data-i18n="info.description">A local-first digital bookshelf application.</p>
 
         <dl class="info-meta">
-          <div><dt data-i18n="info.developer">Developer</dt><dd>maliktr02</dd></div>
-          <div><dt data-i18n="info.version">Version</dt><dd>2.0.0</dd></div>
-          <div><dt data-i18n="info.license">License</dt><dd>MIT</dd></div>
+          <div><dt data-i18n="info.developer">Developer</dt><dd id="infoDeveloper">maliktr02</dd></div>
+          <div><dt data-i18n="info.version">Version</dt><dd id="infoVersion">—</dd></div>
+          <div><dt data-i18n="info.codename">Codename</dt><dd id="infoCodename">—</dd></div>
+          <div><dt data-i18n="info.released">Released</dt><dd id="infoReleased">—</dd></div>
+          <div><dt data-i18n="info.license">License</dt><dd id="infoLicense">MIT</dd></div>
           <div><dt data-i18n="info.repository">Repository</dt>
-            <dd><a href="https://github.com/maliktr02/OpenShelf" target="_blank" rel="noopener">github.com/maliktr02/OpenShelf</a></dd></div>
+            <dd><a id="infoRepoLink" href="#" target="_blank" rel="noopener"></a></dd></div>
         </dl>
+
+        <div class="info-changelog">
+          <h4><i data-lucide="sparkles"></i><span data-i18n="info.whatsNew">What's new</span></h4>
+          <div id="infoChangelog" class="changelog"></div>
+        </div>
 
         <div class="info-privacy">
           <h4><i data-lucide="shield-check"></i><span data-i18n="info.privacy">Privacy</span></h4>
           <p data-i18n="info.privacyText">OpenShelf runs entirely in your browser.</p>
         </div>
 
-        <a class="btn btn-primary repo-btn" href="https://github.com/maliktr02/OpenShelf" target="_blank" rel="noopener">
+        <a class="btn btn-primary repo-btn" id="infoRepoBtn" href="#" target="_blank" rel="noopener">
           <i data-lucide="git-fork"></i><span data-i18n="info.viewOnGitHub">View on GitHub</span>
         </a>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ Quote card modal ═══════════ -->
+  <div id="quoteModal" class="modal">
+    <div class="modal-panel modal-md" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h2><i data-lucide="quote"></i><span data-i18n="quote.title">Quote card</span></h2>
+        <button type="button" class="icon-btn" data-close data-i18n-aria="action.close"><i data-lucide="x"></i></button>
+      </header>
+      <div class="modal-body">
+        <div class="quote-controls">
+          <div class="field span-2">
+            <label data-i18n="quote.pick">Quote to feature</label>
+            <div class="select-wrapper"><select id="quoteSelect"></select><i data-lucide="chevron-down"></i></div>
+          </div>
+
+          <div class="field span-2">
+            <label data-i18n="quote.style">Card style</label>
+            <div class="quote-swatches" id="quoteStyleSeg">
+              <button type="button" class="quote-swatch active" data-style="gradient" data-i18n-title="quote.styleGradient" title="Gradient"><span class="qs-gradient"></span></button>
+              <button type="button" class="quote-swatch" data-style="paper" data-i18n-title="quote.stylePaper" title="Paper"><span class="qs-paper"></span></button>
+              <button type="button" class="quote-swatch" data-style="night" data-i18n-title="quote.styleNight" title="Night"><span class="qs-night"></span></button>
+              <button type="button" class="quote-swatch" data-style="forest" data-i18n-title="quote.styleForest" title="Forest"><span class="qs-forest"></span></button>
+              <button type="button" class="quote-swatch" data-style="sunset" data-i18n-title="quote.styleSunset" title="Sunset"><span class="qs-sunset"></span></button>
+              <button type="button" class="quote-swatch" data-style="minimal" data-i18n-title="quote.styleMinimal" title="Minimal"><span class="qs-minimal"></span></button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label data-i18n="quote.format">Format</label>
+            <div class="segmented" id="quoteFormatSeg">
+              <button type="button" class="view-btn quote-opt active" data-format="square" data-i18n-title="quote.formatSquare" data-i18n-aria="quote.formatSquare" title="Square"><i data-lucide="square"></i></button>
+              <button type="button" class="view-btn quote-opt" data-format="portrait" data-i18n-title="quote.formatPortrait" data-i18n-aria="quote.formatPortrait" title="Portrait"><i data-lucide="rectangle-vertical"></i></button>
+              <button type="button" class="view-btn quote-opt" data-format="story" data-i18n-title="quote.formatStory" data-i18n-aria="quote.formatStory" title="Story"><i data-lucide="smartphone"></i></button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label data-i18n="quote.font">Typeface</label>
+            <div class="segmented" id="quoteFontSeg">
+              <button type="button" class="view-btn quote-opt active" data-font="serif" data-i18n-title="quote.fontSerif" data-i18n-aria="quote.fontSerif" title="Serif"><i data-lucide="type"></i></button>
+              <button type="button" class="view-btn quote-opt" data-font="sans" data-i18n-title="quote.fontSans" data-i18n-aria="quote.fontSans" title="Sans"><i data-lucide="case-sensitive"></i></button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label data-i18n="quote.align">Alignment</label>
+            <div class="segmented" id="quoteAlignSeg">
+              <button type="button" class="view-btn quote-opt active" data-align="left" data-i18n-title="quote.alignLeft" data-i18n-aria="quote.alignLeft" title="Left"><i data-lucide="align-left"></i></button>
+              <button type="button" class="view-btn quote-opt" data-align="center" data-i18n-title="quote.alignCenter" data-i18n-aria="quote.alignCenter" title="Center"><i data-lucide="align-center"></i></button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label data-i18n="quote.accent">Card color</label>
+            <div class="quote-accents" id="quoteAccents"></div>
+          </div>
+
+          <div class="field span-2">
+            <label data-i18n="quote.include">Include</label>
+            <div class="quote-toggles">
+              <label class="check-row"><input type="checkbox" data-quote="title" checked><span data-i18n="quote.showTitle">Title</span></label>
+              <label class="check-row"><input type="checkbox" data-quote="author" checked><span data-i18n="quote.showAuthor">Author</span></label>
+              <label class="check-row"><input type="checkbox" data-quote="branding" checked><span data-i18n="quote.showBranding">OpenShelf mark</span></label>
+              <label class="check-row"><input type="checkbox" data-quote="marks" checked><span data-i18n="quote.showMarks">Quote marks</span></label>
+            </div>
+          </div>
+        </div>
+        <div class="quote-preview-wrap">
+          <canvas id="quoteCanvas" class="quote-canvas"></canvas>
+        </div>
+        <p id="quoteEmpty" class="muted hidden" data-i18n="quote.noQuote">Add a quote to this book first.</p>
+      </div>
+      <footer class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="quoteCopyBtn"><i data-lucide="clipboard"></i><span data-i18n="quote.copy">Copy image</span></button>
+        <button type="button" class="btn btn-soft" id="quoteDownloadBtn"><i data-lucide="download"></i><span data-i18n="quote.download">Download image</span></button>
+        <button type="button" class="btn btn-primary" id="quoteShareBtn"><i data-lucide="share-2"></i><span data-i18n="quote.share">Share</span></button>
+      </footer>
     </div>
   </div>
 
@@ -453,11 +594,16 @@
   <div id="toastHost" class="toast-host"></div>
 
   <!-- Scripts -->
+  <script src="version.js"></script>
+  <script src="js/flags.js"></script>
   <script src="js/config.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/models.js"></script>
   <script src="js/currency.js"></script>
+  <script src="js/charts.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/quotecard.js"></script>
+  <script src="js/markdown.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>
 </body>

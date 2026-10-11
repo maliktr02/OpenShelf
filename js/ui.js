@@ -87,6 +87,12 @@ class UI {
     empty.classList.add('hidden');
 
     let html = '';
+    if (view === 'series') {
+      shelf.innerHTML = this.renderSeriesView(list);
+      if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide' });
+      this.updateResultCount(list.length);
+      return;
+    }
     if (view === 'list') html += this.listHeaderHtml();
     for (const book of list) {
       if (view === 'grid') html += this.gridCardHtml(book);
@@ -104,27 +110,53 @@ class UI {
     el.textContent = `${I18N.formatNumber(count)} ${I18N.t('unit.results')}`;
   }
 
+  static seriesBadge(book) {
+    if (!book.hasSeries) return '';
+    const vol = book.series.volume ? `${I18N.t('series.volumeN')} ${I18N.formatNumber(book.series.volume)} · ` : '';
+    return `<span class="badge badge-series"><i data-lucide="layers"></i>${vol}${this.esc(book.series.name)}</span>`;
+  }
+
+  static tagsHtml(book, max = 3) {
+    if (!book.tags || !book.tags.length) return '';
+    const shown = book.tags.slice(0, max).map((t) => `<span class="tag-chip">${this.esc(t)}</span>`).join('');
+    const more = book.tags.length > max ? `<span class="tag-chip tag-more">+${book.tags.length - max}</span>` : '';
+    return `<div class="tag-chips">${shown}${more}</div>`;
+  }
+
+  static cardActionsHtml(book) {
+    const quoteDisabled = book.quotes.length ? '' : ' disabled';
+    return `
+      <div class="card-actions">
+        <button type="button" class="icon-btn quote-btn"${quoteDisabled} data-i18n-title="action.quoteCard" title="${I18N.t('action.quoteCard')}"><i data-lucide="quote"></i></button>
+        <button type="button" class="icon-btn edit-btn" data-i18n-title="action.editBook" title="${I18N.t('action.editBook')}"><i data-lucide="pencil"></i></button>
+        <button type="button" class="icon-btn delete-btn" data-i18n-title="action.delete" title="${I18N.t('action.delete')}"><i data-lucide="trash-2"></i></button>
+      </div>`;
+  }
+
   static gridCardHtml(book) {
     const trans = Object.entries(book.title.translations)
       .map(([l, t]) => `${l}: ${t}`).join(' • ');
+    const d = this.settings.display || {};
+    const meta = (d.rating !== false)
+      ? `<div class="card-meta">
+            <span class="pages">${I18N.formatNumber(book.pageCount)} ${I18N.t('unit.pages')}</span>
+            ${this.starsHtml(book.rating)}
+          </div>`
+      : `<div class="card-meta"><span class="pages">${I18N.formatNumber(book.pageCount)} ${I18N.t('unit.pages')}</span></div>`;
     return `
       <article class="book-card" data-id="${book.id}" tabindex="0">
         <div class="card-cover-wrap">
           ${this.coverHtml(book)}
-          <div class="card-actions">
-            <button class="icon-btn edit-btn" data-i18n-title="action.editBook" title="${I18N.t('action.editBook')}"><i data-lucide="pencil"></i></button>
-            <button class="icon-btn delete-btn" data-i18n-title="action.delete" title="${I18N.t('action.delete')}"><i data-lucide="trash-2"></i></button>
-          </div>
+          ${this.cardActionsHtml(book)}
         </div>
         <div class="card-body">
           <h3 class="book-title" ${trans ? `title="${this.esc(trans)}"` : ''}>${this.esc(book.title.main)}</h3>
           <p class="book-author">${this.authorLine(book)}</p>
-          <div class="card-meta">
-            <span class="pages">${I18N.formatNumber(book.pageCount)} ${I18N.t('unit.pages')}</span>
-            ${this.starsHtml(book.rating)}
-          </div>
-          ${book.language ? `<span class="badge">${this.esc(book.language)}</span>` : ''}
-          ${this.priceHtml(book)}
+          ${meta}
+          ${d.series !== false ? this.seriesBadge(book) : ''}
+          ${d.language !== false && book.language ? `<span class="badge">${this.esc(book.language)}</span>` : ''}
+          ${d.tags !== false ? this.tagsHtml(book) : ''}
+          ${d.price !== false ? this.priceHtml(book) : ''}
         </div>
       </article>`;
   }
@@ -134,8 +166,10 @@ class UI {
     const bg = book.photos.spine
       ? `background-image:url('${this.esc(book.photos.spine)}')`
       : (book.photos.front ? `background-image:url('${this.esc(book.photos.front)}')` : `background:${this.fallbackGradient(book)}`);
+    const vol = book.hasSeries && book.series.volume ? `<span class="spine-vol">${I18N.t('series.volumeN')} ${book.series.volume}</span>` : '';
     return `
       <button class="spine" data-id="${book.id}" style="--spine-h:${h}px;${bg}" title="${this.esc(book.title.main)} — ${this.esc(book.author.name)}">
+        ${vol}
         <span class="spine-title">${this.esc(book.title.main)}</span>
         <span class="spine-author">${this.esc(book.author.name)}</span>
       </button>`;
@@ -155,41 +189,126 @@ class UI {
   }
 
   static listRowHtml(book) {
+    const d = this.settings.display || {};
     return `
       <div class="list-row" data-id="${book.id}">
         <div class="list-cover">${this.coverHtml(book, 'mini-cover')}</div>
         <div class="list-title-block">
           <span class="list-title">${this.esc(book.title.main)}</span>
           <span class="list-author">${this.authorLine(book)}</span>
+          ${d.series !== false && book.hasSeries ? `<span class="list-series"><i data-lucide="layers"></i>${book.series.volume ? `${I18N.t('series.volumeN')} ${book.series.volume} · ` : ''}${this.esc(book.series.name)}</span>` : ''}
         </div>
         <div class="list-cell">${I18N.formatNumber(book.pageCount)}</div>
-        <div class="list-cell">${book.language ? this.esc(book.language) : '—'}</div>
-        <div class="list-cell">${this.starsHtml(book.rating, 'stars stars-sm')}</div>
-        <div class="list-cell">${this.priceHtml(book)}</div>
+        <div class="list-cell">${d.language !== false && book.language ? this.esc(book.language) : '—'}</div>
+        <div class="list-cell">${d.rating !== false ? this.starsHtml(book.rating, 'stars stars-sm') : '—'}</div>
+        <div class="list-cell">${d.price !== false ? this.priceHtml(book) : '—'}</div>
         <div class="list-actions">
+          <button class="icon-btn quote-btn"${book.quotes.length ? '' : ' disabled'} title="${I18N.t('action.quoteCard')}"><i data-lucide="quote"></i></button>
           <button class="icon-btn edit-btn" title="${I18N.t('action.editBook')}"><i data-lucide="pencil"></i></button>
           <button class="icon-btn delete-btn" title="${I18N.t('action.delete')}"><i data-lucide="trash-2"></i></button>
         </div>
       </div>`;
   }
 
+  /* ── Series view ── */
+  static seriesGroups(books) {
+    const map = new Map();
+    for (const b of books) {
+      if (!b.hasSeries) continue;
+      if (!map.has(b.series.name)) map.set(b.series.name, []);
+      map.get(b.series.name).push(b);
+    }
+    const groups = [...map.entries()].map(([name, list]) => {
+      const vols = list.filter((b) => b.series.volume).map((b) => b.series.volume).sort((a, b) => a - b);
+      const max = vols.length ? Math.max(...vols) : 0;
+      const missing = [];
+      for (let i = 1; i <= max; i++) if (!vols.includes(i)) missing.push(i);
+      return { name, list, owned: list.length, max, volumes: vols, missing };
+    });
+    groups.sort((a, b) => a.name.localeCompare(b.name, I18N.currentLocale));
+    return groups;
+  }
+
+  static seriesCardHtml(group) {
+    const sorted = [...group.list].sort((a, b) => (a.series.volume || 9999) - (b.series.volume || 9999));
+    const pct = group.max ? Math.round((group.volumes.length / group.max) * 100) : 100;
+    const complete = group.missing.length === 0 && group.max > 0;
+    const covers = sorted.map((b) => `
+      <button class="series-cover" data-id="${b.id}" title="${this.esc(b.title.main)}">
+        ${this.coverHtml(b, 'series-cover-inner')}
+        ${b.series.volume ? `<span class="series-vol">${I18N.t('series.volumeN')} ${b.series.volume}</span>` : ''}
+      </button>`).join('');
+    const missingLine = group.missing.length
+      ? `<span class="series-missing">${I18N.t('series.missing')}: ${group.missing.join(', ')}</span>`
+      : (group.max > 1 ? `<span class="series-complete"><i data-lucide="badge-check"></i>${I18N.t('series.complete')}</span>` : '');
+    return `
+      <section class="series-group">
+        <header class="series-head">
+          <div class="series-head-main">
+            <h3>${this.esc(group.name)}</h3>
+            <span class="series-count">${group.owned} ${I18N.t('series.volumesOwned')}</span>
+          </div>
+          ${missingLine}
+        </header>
+        <div class="series-progress"><span style="width:${pct}%"></span></div>
+        <div class="series-covers">${covers}</div>
+      </section>`;
+  }
+
+  static renderSeriesView(list) {
+    const groups = this.seriesGroups(list);
+    const loose = list.filter((b) => !b.hasSeries);
+    if (!groups.length && !loose.length) return '';
+    let html = groups.map((g) => this.seriesCardHtml(g)).join('');
+    if (!groups.length) html += `<p class="muted series-empty">${I18N.t('series.empty')}</p>`;
+    if (loose.length) {
+      html += `<section class="series-group series-loose">
+        <header class="series-head"><div class="series-head-main"><h3>${I18N.t('view.list')}</h3>
+          <span class="series-count">${loose.length}</span></div></header>
+        <div class="series-covers">${loose.map((b) => `
+          <button class="series-cover" data-id="${b.id}" title="${this.esc(b.title.main)}">
+            ${this.coverHtml(b, 'series-cover-inner')}</button>`).join('')}</div>
+      </section>`;
+    }
+    return html;
+  }
+
   /* ── Filters & sorting ── */
   static populateFilters() {
     const authors = new Set();
     const langs = new Set();
+    const series = new Set();
+    const tags = new Set();
     for (const b of this.books) {
       if (b.author.name) authors.add(b.author.name);
       if (b.language) langs.add(b.language);
+      if (b.hasSeries) series.add(b.series.name);
+      for (const t of b.tags) tags.add(t);
     }
     const authorSel = document.getElementById('filterAuthor');
     const langSel = document.getElementById('filterLang');
+    const seriesSel = document.getElementById('filterSeries');
+    const tagSel = document.getElementById('filterTag');
+    const curAuthor = authorSel ? authorSel.value : '';
+    const curLang = langSel ? langSel.value : '';
+    const curSeries = seriesSel ? seriesSel.value : '';
+    const curTag = tagSel ? tagSel.value : '';
+
     if (authorSel) {
       authorSel.innerHTML = `<option value="">${I18N.t('filters.allAuthors')}</option>` +
-        [...authors].sort().map((a) => `<option value="${this.esc(a)}"${a === this.authorFilter ? ' selected' : ''}>${this.esc(a)}</option>`).join('');
+        [...authors].sort().map((a) => `<option value="${this.esc(a)}"${a === curAuthor ? ' selected' : ''}>${this.esc(a)}</option>`).join('');
     }
     if (langSel) {
       langSel.innerHTML = `<option value="">${I18N.t('filters.allLanguages')}</option>` +
-        [...langs].sort().map((l) => `<option value="${this.esc(l)}"${l === this.langFilter ? ' selected' : ''}>${this.esc(l)}</option>`).join('');
+        [...langs].sort().map((l) => `<option value="${this.esc(l)}"${l === curLang ? ' selected' : ''}>${this.esc(l)}</option>`).join('');
+    }
+    if (seriesSel) {
+      seriesSel.innerHTML = `<option value="">${I18N.t('filters.allSeries')}</option>` +
+        [...series].sort((a, b) => a.localeCompare(b, I18N.currentLocale)).map((s) => `<option value="${this.esc(s)}"${s === curSeries ? ' selected' : ''}>${this.esc(s)}</option>`).join('');
+    }
+    if (tagSel) {
+      tagSel.innerHTML = `<option value="">${I18N.t('filters.allTags')}</option>` +
+        [...tags].sort((a, b) => a.localeCompare(b, I18N.currentLocale)).map((t) => `<option value="${this.esc(t)}"${t === curTag ? ' selected' : ''}>${this.esc(t)}</option>`).join('');
     }
   }
 
@@ -197,6 +316,8 @@ class UI {
     const term = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
     const author = document.getElementById('filterAuthor')?.value || '';
     const lang = document.getElementById('filterLang')?.value || '';
+    const series = document.getElementById('filterSeries')?.value || '';
+    const tag = document.getElementById('filterTag')?.value || '';
     const rating = parseInt(document.getElementById('filterRating')?.value || '0') || 0;
     const priceBand = document.getElementById('filterPrice')?.value || '';
     const sort = document.getElementById('sortData')?.value || 'newest';
@@ -209,12 +330,17 @@ class UI {
           b.author.name,
           b.genre,
           b.language,
+          b.series.name,
+          b.tags.join(' '),
+          b.quotes.join(' '),
           b.notes
         ].join(' ').toLowerCase();
         if (!hay.includes(term)) return false;
       }
       if (author && b.author.name !== author) return false;
       if (lang && b.language !== lang) return false;
+      if (series && b.series.name !== series) return false;
+      if (tag && !b.tags.includes(tag)) return false;
       if (rating && b.rating < rating) return false;
       if (priceBand) {
         const usd = CurrencyService.convert(b.price.amount, b.price.currency, 'USD') || 0;
@@ -231,6 +357,9 @@ class UI {
       case 'titleZA': list.sort((a, b) => byTitle(b, a)); break;
       case 'rating': list.sort((a, b) => b.rating - a.rating || b.createdAt - a.createdAt); break;
       case 'pages': list.sort((a, b) => b.pageCount - a.pageCount); break;
+      case 'series': list.sort((a, b) =>
+        a.series.name.localeCompare(b.series.name, I18N.currentLocale) ||
+        (a.series.volume || 0) - (b.series.volume || 0)); break;
       case 'price': list.sort((a, b) =>
         (CurrencyService.convert(b.price.amount, b.price.currency, 'USD') || 0) -
         (CurrencyService.convert(a.price.amount, a.price.currency, 'USD') || 0)); break;
@@ -246,7 +375,7 @@ class UI {
   static clearFilters() {
     const s = document.getElementById('searchInput');
     if (s) s.value = '';
-    ['filterAuthor', 'filterLang', 'filterRating', 'filterPrice'].forEach((id) => {
+    ['filterAuthor', 'filterLang', 'filterSeries', 'filterTag', 'filterRating', 'filterPrice'].forEach((id) => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     const sort = document.getElementById('sortData');
@@ -264,15 +393,32 @@ class UI {
     const rated = books.filter((b) => b.rating > 0);
     const avg = rated.length ? (rated.reduce((s, b) => s + b.rating, 0) / rated.length) : 0;
     const value = books.reduce((s, b) => s + (CurrencyService.convert(b.price.amount, b.price.currency, base) || 0), 0);
+    const seriesGroups = this.seriesGroups(books);
 
     const authorCounts = this._count(books, (b) => b.author.name);
     const langCounts = this._count(books, (b) => b.language);
+    const tagCounts = {};
+    books.forEach((b) => b.tags.forEach((t) => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
     const ratingDist = [0, 0, 0, 0, 0];
     books.forEach((b) => { if (b.rating >= 1 && b.rating <= 5) ratingDist[b.rating - 1]++; });
     const recent = [...books].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
 
     const topAuthor = this._top(authorCounts);
     const topLang = this._top(langCounts);
+
+    // Added-over-time (last 12 months)
+    const now = new Date();
+    const monthFmt = new Intl.DateTimeFormat(I18N.currentLocale, { month: 'short' });
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: monthFmt.format(d), value: 0 });
+    }
+    books.forEach((b) => {
+      const d = new Date(b.createdAt);
+      const m = months.find((x) => x.key === `${d.getFullYear()}-${d.getMonth()}`);
+      if (m) m.value++;
+    });
 
     const statBox = (valueHtml, label, icon) => `
       <div class="stat-box">
@@ -281,21 +427,28 @@ class UI {
         <div class="stat-label">${label}</div>
       </div>`;
 
-    const maxRating = Math.max(1, ...ratingDist);
-    const ratingBars = ratingDist.map((c, i) => `
-      <div class="dist-row">
-        <span class="dist-key">${i + 1} <i data-lucide="star"></i></span>
-        <div class="dist-bar"><span style="width:${(c / maxRating) * 100}%"></span></div>
-        <span class="dist-count">${c}</span>
-      </div>`).reverse().join('');
+    const ratingChart = Charts.bars(ratingDist.map((c, i) => ({ label: String(i + 1), value: c })));
+    const langChart = Charts.donut(Object.entries(langCounts).sort((a, b) => b[1] - a[1]).slice(0, 7)
+      .map(([label, value]) => ({ label, value })));
+    const growthChart = Charts.area(months);
 
-    const maxLang = Math.max(1, ...Object.values(langCounts || { n: 1 }));
-    const langBars = Object.entries(langCounts).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([l, c]) => `
-      <div class="dist-row">
-        <span class="dist-key text">${this.esc(l)}</span>
-        <div class="dist-bar"><span style="width:${(c / maxLang) * 100}%"></span></div>
-        <span class="dist-count">${c}</span>
-      </div>`).join('') || `<p class="muted">${I18N.t('stats.noData')}</p>`;
+    const seriesHtml = seriesGroups.length ? seriesGroups.map((g) => {
+      const pct = g.max ? Math.round((g.volumes.length / g.max) * 100) : 100;
+      const missing = g.missing.length ? ` · ${I18N.t('series.missing')}: ${g.missing.join(', ')}` : '';
+      return `
+        <div class="sp-row">
+          <div class="sp-head"><span>${this.esc(g.name)}</span>
+            <span class="muted">${g.owned}${g.max ? '/' + g.max : ''}</span></div>
+          <div class="series-progress"><span style="width:${pct}%"></span></div>
+          <div class="sp-meta">${g.owned} ${I18N.t('series.volumesOwned')}${missing}</div>
+        </div>`;
+    }).join('') : `<p class="muted">${I18N.t('stats.noSeries')}</p>`;
+
+    const maxTag = Math.max(1, ...Object.values(tagCounts), 1);
+    const tagCloud = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 18).map(([t, c]) => {
+      const scale = 0.82 + (c / maxTag) * 0.55;
+      return `<span class="tag-chip cloud" style="font-size:${scale}rem" title="${c}">${this.esc(t)} <b>${c}</b></span>`;
+    }).join('') || `<p class="muted">${I18N.t('stats.noData')}</p>`;
 
     const recentList = recent.length ? recent.map((b) => `
       <div class="recent-item" data-id="${b.id}">
@@ -309,16 +462,29 @@ class UI {
         ${statBox(I18N.formatNumber(total), I18N.t('stats.totalBooks'), 'library')}
         ${statBox(I18N.formatNumber(pages), I18N.t('stats.totalPages'), 'files')}
         ${statBox(avg ? avg.toFixed(1) : '—', I18N.t('stats.avgRating'), 'star')}
+        ${statBox(I18N.formatNumber(seriesGroups.length), I18N.t('stats.series'), 'layers')}
         ${statBox(CurrencyService.format(value, base), I18N.t('stats.totalValue'), 'wallet')}
       </div>
       <div class="stats-detail">
         <div class="stat-panel">
-          <h4><i data-lucide="bar-chart-3"></i> ${I18N.t('stats.ratingDistribution')}</h4>
-          ${ratingBars}
+          <h4><i data-lucide="bar-chart-3"></i> ${I18N.t('stats.chartRatings')}</h4>
+          <div class="chart-holder">${ratingChart}</div>
         </div>
         <div class="stat-panel">
-          <h4><i data-lucide="languages"></i> ${I18N.t('stats.languageDistribution')}</h4>
-          ${langBars}
+          <h4><i data-lucide="languages"></i> ${I18N.t('stats.chartLanguages')}</h4>
+          <div class="chart-holder">${langChart}</div>
+        </div>
+        <div class="stat-panel span-2">
+          <h4><i data-lucide="trending-up"></i> ${I18N.t('stats.growth')} <span class="muted panel-sub">${I18N.t('stats.last12')}</span></h4>
+          <div class="chart-holder">${growthChart}</div>
+        </div>
+        <div class="stat-panel span-2">
+          <h4><i data-lucide="layers"></i> ${I18N.t('stats.seriesProgress')}</h4>
+          <div class="series-progress-list">${seriesHtml}</div>
+        </div>
+        <div class="stat-panel">
+          <h4><i data-lucide="tags"></i> ${I18N.t('stats.tags')}</h4>
+          <div class="tag-cloud">${tagCloud}</div>
         </div>
         <div class="stat-panel">
           <h4><i data-lucide="user-round"></i> ${I18N.t('stats.topAuthor')}</h4>

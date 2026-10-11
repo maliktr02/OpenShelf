@@ -55,7 +55,15 @@ class Store {
     density: 'comfortable',
     animations: true,
     font: 'sans',
-    sort: 'newest'
+    sort: 'newest',
+    /* Which optional details appear on cards / list rows. */
+    display: { rating: true, price: true, tags: true, series: true, language: true },
+    /* Remembered quote-card personalisation. */
+    quote: {
+      style: 'gradient', format: 'square', font: 'serif',
+      align: 'left', accent: '',
+      showTitle: true, showAuthor: true, showBranding: true, showMarks: true
+    }
   };
 
   static _read(key, fallback) {
@@ -89,9 +97,15 @@ class Store {
   }
 
   /* ── Settings ── */
+  static mergeSettings(raw) {
+    const s = { ...this.DEFAULT_SETTINGS, ...(raw || {}) };
+    s.display = { ...this.DEFAULT_SETTINGS.display, ...((raw && raw.display) || {}) };
+    s.quote = { ...this.DEFAULT_SETTINGS.quote, ...((raw && raw.quote) || {}) };
+    return s;
+  }
+
   static getSettings() {
-    const raw = this._read(this.SETTINGS_KEY, {});
-    return { ...this.DEFAULT_SETTINGS, ...(raw || {}) };
+    return this.mergeSettings(this._read(this.SETTINGS_KEY, {}));
   }
 
   static saveSettings(settings) {
@@ -99,8 +113,9 @@ class Store {
   }
 
   static resetSettings() {
-    this.saveSettings({ ...this.DEFAULT_SETTINGS });
-    return { ...this.DEFAULT_SETTINGS };
+    const fresh = this.mergeSettings({});
+    this.saveSettings(fresh);
+    return fresh;
   }
 
   /* ── Backup ── */
@@ -108,6 +123,8 @@ class Store {
     return JSON.stringify({
       app: OPEN_SHELF.name,
       version: OPEN_SHELF.version,
+      codename: OPEN_SHELF.codename,
+      schema: OPEN_SHELF.schemaVersion,
       exportedAt: new Date().toISOString(),
       books: this.getBooks(),
       settings: this.getSettings()
@@ -120,7 +137,7 @@ class Store {
       if (!data || !Array.isArray(data.books)) return false;
       this.saveBooks(data.books);
       if (data.settings && typeof data.settings === 'object') {
-        this.saveSettings({ ...this.DEFAULT_SETTINGS, ...data.settings });
+        this.saveSettings(this.mergeSettings(data.settings));
       }
       return true;
     } catch (e) {
@@ -129,7 +146,12 @@ class Store {
     }
   }
 
-  /* ── Optional data-folder sync (File System Access API) ── */
+  /* ── Optional data-folder sync (File System Access API) ──
+   * Everything the app persists is written inside a `data/`
+   * subdirectory of the folder you pick, so an OpenShelf install is
+   * self-contained and portable. */
+  static DATA_DIR = 'data';
+
   static DataFolder = {
     supported() {
       return typeof window.showDirectoryPicker === 'function';
@@ -147,6 +169,13 @@ class Store {
       if ((await handle.requestPermission(opts)) === 'granted') return true;
       return false;
     },
+    /** Resolves the `data/` subdirectory inside the picked folder. */
+    async _dataDir(create = true) {
+      const root = await this.getHandle();
+      if (!root) return null;
+      if (!(await this.ensurePermission(root))) return null;
+      return root.getDirectoryHandle(Store.DATA_DIR, { create });
+    },
     async _writeFile(dir, name, content) {
       const fileHandle = await dir.getFileHandle(name, { create: true });
       const writable = await fileHandle.createWritable();
@@ -154,24 +183,31 @@ class Store {
       await writable.close();
     },
     async save(books, settings) {
-      const handle = await this.getHandle();
-      if (!handle) return false;
-      if (!(await this.ensurePermission(handle))) return false;
-      await this._writeFile(handle, 'books.json', JSON.stringify(books.map((b) => (b instanceof Book ? b.toJSON() : b)), null, 2));
-      await this._writeFile(handle, 'settings.json', JSON.stringify(settings, null, 2));
+      const dir = await this._dataDir(true);
+      if (!dir) return false;
+      const list = books.map((b) => (b instanceof Book ? b.toJSON() : b));
+      await this._writeFile(dir, 'books.json', JSON.stringify(list, null, 2));
+      await this._writeFile(dir, 'settings.json', JSON.stringify(settings, null, 2));
+      await this._writeFile(dir, 'meta.json', JSON.stringify({
+        app: OPEN_SHELF.name,
+        version: OPEN_SHELF.version,
+        codename: OPEN_SHELF.codename,
+        schema: OPEN_SHELF.schemaVersion,
+        updatedAt: new Date().toISOString(),
+        bookCount: list.length
+      }, null, 2));
       return true;
     },
     async load() {
-      const handle = await this.getHandle();
-      if (!handle) return null;
-      if (!(await this.ensurePermission(handle))) return null;
+      const dir = await this._dataDir(false);
+      if (!dir) return null;
       const result = {};
       try {
-        const booksFile = await handle.getFileHandle('books.json');
+        const booksFile = await dir.getFileHandle('books.json');
         result.books = JSON.parse(await (await booksFile.getFile()).text());
       } catch (e) { /* no books file yet */ }
       try {
-        const settingsFile = await handle.getFileHandle('settings.json');
+        const settingsFile = await dir.getFileHandle('settings.json');
         result.settings = JSON.parse(await (await settingsFile.getFile()).text());
       } catch (e) { /* no settings file yet */ }
       return result;

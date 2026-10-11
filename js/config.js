@@ -1,15 +1,17 @@
 /* ─────────────────────────────────────────────────────────────
  * OpenShelf — Global configuration
  * Single source of truth for languages, currencies, themes, etc.
+ * Version metadata is NOT defined here — it is read from the
+ * root-level version.js file and spread in below.
  * ───────────────────────────────────────────────────────────── */
 const OPEN_SHELF = {
-  name: 'OpenShelf',
-  version: '2.0.0',
-  repository: 'https://github.com/maliktr02/OpenShelf',
-  license: 'MIT',
-  creator: 'maliktr02',
+  /* Every version field (name, version, codename, releaseDate,
+   * schemaVersion, repository, creator, license, changelog…) comes
+   * from version.js — the single source of truth. */
+  ...OPEN_SHELF_VERSION,
 
-  /* Interface (UI) languages. Each code maps to locales/<code>.js */
+  /* Interface (UI) languages. Each code maps to locales/<code>.js
+   * and to a flag in js/flags.js. */
   uiLocales: [
     { code: 'en', name: 'English',        native: 'English' },
     { code: 'tr', name: 'Turkish',        native: 'Türkçe' },
@@ -31,7 +33,7 @@ const OPEN_SHELF = {
     { code: 'id', name: 'Indonesian',     native: 'Bahasa Indonesia' },
     { code: 'el', name: 'Greek',          native: 'Ελληνικά' },
     { code: 'sv', name: 'Swedish',        native: 'Svenska' }
-  ],
+  ].map((l) => ({ ...l, flag: (window.OPEN_SHELF_FLAGS || {})[l.code] || '' })),
 
   /* Literary / book languages (value stored on a book) */
   literaryLanguages: [
@@ -88,6 +90,16 @@ const OPEN_SHELF = {
   cardSizes: ['compact', 'normal', 'large'],
   densities: ['comfortable', 'compact'],
   fonts: ['sans', 'serif'],
+
+  /* Quote-card personalisation options */
+  quoteStyles: ['gradient', 'paper', 'night', 'forest', 'sunset', 'minimal'],
+  quoteFormats: ['square', 'portrait', 'story'],
+  quoteFonts: ['serif', 'sans'],
+  quoteAligns: ['left', 'center'],
+  quoteAccents: ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#0f172a'],
+
+  /* Optional card details that can each be toggled on/off */
+  displayOptions: ['rating', 'price', 'tags', 'series', 'language'],
 
   storageKeys: {
     books: 'openshelf.books',

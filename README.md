@@ -4,7 +4,7 @@
 
 No build step. No server. No tracking. Just open the app.
 
-> **Status:** v2.0.0 — a full rewrite of the original prototype into a modular, dependency-free static web app.
+> **Status:** v2.2.0 — a modular, dependency-free static web app with series tracking, tags, visual statistics, richly customisable quote cards and a single-source version system.
 
 ---
 
@@ -14,29 +14,42 @@ No build step. No server. No tracking. Just open the app.
 - **Multi-language titles** — one main title plus any number of per-language title translations.
 - **Detailed authors** — name, birth year, death year and ethnicity.
 - **Reading metadata** — page count, literary language, rating and personal notes.
+- **Series tracking** — group volumes under a series name with a volume number, and see at a glance which volumes you own and which are missing.
+- **Tags** — label books with any number of free-form tags and filter your shelf by them.
+- **Quotes** — keep memorable lines for each book, separate from your notes.
 - **Prices that make sense** — pick a currency when you enter a price and OpenShelf converts it to your chosen base currency in real time (a book entered as `25 TRY` shows its true value in `USD`, not a mislabelled `25 USD`).
 - **Optional cover photos** — add a front and/or spine image for each book.
 
 ### A shelf that looks like a shelf
-- **Three view modes** — cover grid, a bookshelf of spines, or a compact list table.
+- **Four view modes** — cover grid, a bookshelf of spines (with volume labels), a **series view** that groups volumes with progress bars, or a compact list table.
 - **Configurable card size and density**, so the shelf fits the way you like.
-- **Book-themed design** — layered gradients, subtle motion, elegant display typography, and a startup animation.
+- **Shelf display preferences** — show or hide ratings, prices, tags, series and language on cards and list rows.
+- **Book-themed design** — layered gradients, subtle motion, elegant display typography, and a polished animated startup screen that reports its progress.
 - **Date & local time** shown in the top bar.
 - **Proper iconography** — crisp Lucide line icons instead of emoji.
 
 ### Powerful discovery
-- **Detailed filtering & sorting** by title, author, language, rating, price and more.
-- **A comprehensive statistics panel** — totals, averages, language and author breakdowns, rating distribution and estimated collection value.
+- **Detailed filtering & sorting** by title, author, language, series, tag, rating, price and more.
+- **A comprehensive statistics panel** with real charts: a rating bar chart, a language donut, an "added over time" area graph, per-series progress, a top-tags cloud and collection value.
+
+### Share your reading
+- **Quote cards** — turn any saved quote into a stylish image in **six styles** (Gradient, Paper, Night, Forest, Sunset, Minimal), **three formats** (square 1080×1080, portrait 1080×1350, story 1080×1920), two typefaces, left/centre alignment, a custom card colour, and optional title, author, branding and quote marks. Download it, copy it to the clipboard, or share it directly to social apps via the Web Share API.
+- **Markdown export** — export the whole library (or a single book) to a clean Markdown document. Labels follow your selected interface language, so you can generate the same shelf in any of the 20 languages.
 
 ### Make it yours
-- **20 interface languages**, including right-to-left Arabic and Persian.
+- **20 interface languages**, each shown with its **country flag** so the choice is obvious at a glance — including right-to-left Arabic and Persian.
 - **Multiple themes** — light, dark, sepia and follow-system.
-- **Accent colour presets**, font choice, animation toggle and card layout controls — all under an extensive Settings panel.
+- **Accent colour presets**, font choice, animation toggle, card layout and shelf-display controls — all under an extensive Settings panel.
 
 ### Private by design
 - All data stays on your device using **`localStorage`**.
-- **Export / import** your library as JSON at any time.
-- Optional **data folder sync** (Chromium browsers) writes `books.json` and `settings.json` to a folder you choose — a portable, human-readable backup that never leaves your machine.
+- **Export / import** your library as JSON at any time (with app version and schema metadata).
+- **Markdown export** for a portable, human-readable copy of your catalogue.
+- Optional **data folder sync** (Chromium browsers) keeps everything inside a `data/` subdirectory of a folder you choose — `books.json`, `settings.json` and `meta.json` form a portable, human-readable backup that never leaves your machine.
+
+### Built to last
+- **One version file** — every version number, the codename, release date, schema version and the changelog live in the root `version.js`; the app reads them everywhere, including the Info panel.
+- **Data schema versioning** so backups remain compatible as the format evolves.
 
 ---
 
@@ -74,20 +87,25 @@ npx serve .
 ```
 OpenShelf/
 ├── index.html              # App shell: top bar, toolbar, views, modals
+├── version.js              # Single source of truth for version metadata & changelog
 ├── css/
 │   ├── base.css            # Design tokens, themes, typography, animations
 │   ├── layout.css          # Top bar, toolbar, shelf layouts, responsiveness
 │   └── components.css      # Cards, buttons, forms, modals, statistics
 ├── js/
-│   ├── config.js           # Languages, currencies, themes, storage keys
+│   ├── flags.js            # Inline SVG country flags for the language picker
+│   ├── config.js           # Languages, currencies, themes, option lists
 │   ├── i18n.js             # Translation engine (+ embedded English)
 │   ├── models.js           # Book model and validation
 │   ├── currency.js         # Conversion, formatting and display
+│   ├── charts.js           # Dependency-free SVG charts (donut, bars, area)
+│   ├── quotecard.js        # Canvas quote-card renderer (download/copy/share)
+│   ├── markdown.js         # Markdown export (library and single book)
 │   ├── store.js            # localStorage + optional data-folder sync
 │   ├── ui.js               # Rendering, filtering, sorting, statistics
 │   └── app.js              # App controller, modals, forms, events
 ├── locales/                # One <code>.js file per interface language
-├── data/                   # Local user data (git-ignored) + folder docs
+├── data/                   # Optional self-contained data folder (books.json, …)
 │   └── README.md           # Notes on the data folder
 ├── LICENSE
 ├── CONTRIBUTING.md
@@ -109,7 +127,7 @@ I18N.register('de', {
 });
 ```
 
-Adding a language is as simple as dropping in a new file and listing its code in `js/config.js`. See [`data/README.md`](data/README.md) for details. The name **OpenShelf** is intentionally kept identical in every language.
+Adding a language is as simple as dropping in a new file and listing its code in `js/config.js` (plus a flag in `js/flags.js`). See [`data/README.md`](data/README.md) for details. The name **OpenShelf** is intentionally kept identical in every language, and the interface-language picker shows each option with its country flag.
 
 Included interface languages: English, Turkish, German, French, Spanish, Italian, Portuguese, Russian, Arabic, Persian, Hindi, Chinese, Japanese, Korean, Dutch, Polish, Ukrainian, Indonesian, Greek and Swedish.
 

@@ -2,10 +2,11 @@
 
 This folder is reserved for **your private library data**. Nothing here is committed to Git — see `.gitignore`.
 
-OpenShelf stores your books in the browser's `localStorage` by default. If you enable **data folder sync** in Settings (Chromium browsers only), the app writes these human-readable files into a folder you choose:
+OpenShelf stores your books in the browser's `localStorage` by default. If you enable **data folder sync** in Settings (Chromium browsers only), pick any folder on your disk and the app keeps its files inside a **`data/` subdirectory** of it:
 
 - `books.json` — your catalogue
 - `settings.json` — your preferences
+- `meta.json` — app version, data schema version and a timestamp
 
 A dedicated run may also create:
 

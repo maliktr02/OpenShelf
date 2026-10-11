@@ -7,18 +7,26 @@ const App = {
 
   async start() {
     this.cacheDom();
+    this.paintLoader();
+    this.setLoaderProgress(6, 'loading.interface');
     this.buildStaticSelects();
     this.bindGlobal();
     this.bindToolbar();
     this.bindBookForm();
+    this.bindQuoteCard();
     this.bindSettings();
+    this.bindLanguageControl();
     this.bindDataTools();
+    this.setLoaderProgress(24, 'loading.library');
 
     this.startClock();
     await UI.init();
+    this.updateLanguageControl();
+    this.setLoaderProgress(80, 'loading.finishing');
     this.bindShelf();
 
     if (window.lucide) lucide.createIcons();
+    this.setLoaderProgress(100, 'loading.ready');
     this.dismissLoader();
 
     // React to OS theme changes when "auto" is selected.
@@ -32,16 +40,31 @@ const App = {
   },
 
   /* ── Startup ── */
+  paintLoader() {
+    const v = document.getElementById('startupVersion');
+    if (v && window.Version) v.textContent = Version.label();
+    this.setLoaderProgress(3);
+  },
+
+  setLoaderProgress(pct, key) {
+    const bar = document.getElementById('startupBar');
+    const pctEl = document.getElementById('startupPct');
+    const taskEl = document.getElementById('startupTask');
+    if (bar) bar.style.width = `${pct}%`;
+    if (pctEl) pctEl.textContent = `${Math.round(pct)}%`;
+    if (taskEl && key) taskEl.textContent = I18N.t(key);
+  },
+
   dismissLoader() {
     const loader = document.getElementById('startupLoader');
     if (!loader) return;
     const hide = () => {
       loader.classList.add('done');
       document.body.classList.add('ready');
-      setTimeout(() => loader.remove(), 700);
+      setTimeout(() => loader.remove(), 800);
     };
-    if (document.readyState === 'complete') setTimeout(hide, 650);
-    else window.addEventListener('load', () => setTimeout(hide, 650), { once: true });
+    if (document.readyState === 'complete') setTimeout(hide, 550);
+    else window.addEventListener('load', () => setTimeout(hide, 550), { once: true });
   },
 
   /* ── Clock ── */
@@ -63,11 +86,6 @@ const App = {
     if (langSel) {
       langSel.innerHTML = `<option value=""></option>` +
         OPEN_SHELF.literaryLanguages.map((l) => `<option value="${UI.esc(l)}">${UI.esc(l)}</option>`).join('');
-    }
-    const uiSel = document.getElementById('uiLanguageSelect');
-    if (uiSel) {
-      uiSel.innerHTML = OPEN_SHELF.uiLocales
-        .map((l) => `<option value="${l.code}">${UI.esc(l.native)} — ${UI.esc(l.name)}</option>`).join('');
     }
     const curOptions = Object.keys(OPEN_SHELF.currencies)
       .map((c) => `<option value="${c}">${c}</option>`).join('');
@@ -150,9 +168,92 @@ const App = {
     });
   },
 
+  /* ── Info panel (driven entirely by version.js) ── */
+  openInfo() {
+    const m = OPEN_SHELF;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('infoDeveloper', m.creator);
+    set('infoVersion', m.version);
+    set('infoCodename', m.codename);
+    set('infoReleased', m.releaseDate);
+    set('infoLicense', m.license);
+    const link = document.getElementById('infoRepoLink');
+    if (link) { link.href = m.repository; link.textContent = m.repositoryLabel; }
+    const btn = document.getElementById('infoRepoBtn');
+    if (btn) btn.href = m.repository;
+    const cl = document.getElementById('infoChangelog');
+    if (cl) {
+      cl.innerHTML = (m.changelog || []).slice(0, 2).map((rel) => `
+        <div class="changelog-entry">
+          <div class="changelog-head">
+            <strong>v${UI.esc(rel.version)}</strong>
+            <span class="muted">${UI.esc(rel.codename || '')} · ${UI.esc(rel.date)}</span>
+          </div>
+          <ul>${(rel.changes || []).map((c) => `<li>${UI.esc(c)}</li>`).join('')}</ul>
+        </div>`).join('');
+    }
+    this.openModal('infoModal');
+  },
+
+  /* ── Interface-language picker (with flags) ── */
+  buildLanguageMenu() {
+    const menu = document.getElementById('uiLangMenu');
+    if (!menu) return;
+    menu.innerHTML = OPEN_SHELF.uiLocales.map((l) => `
+      <button type="button" class="lang-option${l.code === UI.settings.uiLang ? ' active' : ''}" role="option" data-code="${l.code}">
+        <span class="lang-flag">${l.flag || ''}</span>
+        <span class="lang-opt-native">${UI.esc(l.native)}</span>
+        <span class="lang-opt-name">${UI.esc(l.name)}</span>
+      </button>`).join('');
+    menu.querySelectorAll('.lang-option').forEach((btn) => {
+      btn.addEventListener('click', () => this.selectLanguage(btn.dataset.code));
+    });
+  },
+
+  updateLanguageControl() {
+    const meta = I18N.localeMeta();
+    const flag = document.getElementById('uiLangFlag');
+    const cur = document.getElementById('uiLangCurrent');
+    const trigger = document.getElementById('uiLangTrigger');
+    if (flag) flag.innerHTML = meta.flag || '';
+    if (cur) cur.textContent = meta.native;
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    this.buildLanguageMenu();
+  },
+
+  bindLanguageControl() {
+    const trigger = document.getElementById('uiLangTrigger');
+    const control = document.getElementById('uiLanguageControl');
+    if (!trigger || !control) return;
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = control.classList.toggle('open');
+      trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', (e) => {
+      if (!control.contains(e.target)) {
+        control.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+    });
+    this.updateLanguageControl();
+  },
+
+  async selectLanguage(code) {
+    const control = document.getElementById('uiLanguageControl');
+    if (control) control.classList.remove('open');
+    UI.settings.uiLang = code;
+    Store.saveSettings(UI.settings);
+    await I18N.setLocale(code);
+    this.buildStaticSelects();
+    this.updateLanguageControl();
+    UI.refresh();
+    this.renderAccentSwatches();
+  },
+
   /* ── Toolbar ── */
   bindToolbar() {
-    document.getElementById('infoBtn').addEventListener('click', () => this.openModal('infoModal'));
+    document.getElementById('infoBtn').addEventListener('click', () => this.openInfo());
     document.getElementById('statsBtn').addEventListener('click', () => UI.showStats());
     document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
     document.getElementById('addBookBtn').addEventListener('click', () => this.openBookModal());
@@ -166,7 +267,7 @@ const App = {
 
     const search = document.getElementById('searchInput');
     search.addEventListener('input', () => UI.onFiltersChanged());
-    ['filterAuthor', 'filterLang', 'filterRating', 'filterPrice', 'sortData'].forEach((id) => {
+    ['filterAuthor', 'filterLang', 'filterSeries', 'filterTag', 'filterRating', 'filterPrice', 'sortData'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('change', () => UI.onFiltersChanged());
     });
@@ -180,9 +281,10 @@ const App = {
       if (!row) return;
       const id = row.dataset.id;
       if (e.target.closest('.delete-btn')) return this.deleteBook(id);
+      if (e.target.closest('.quote-btn')) return this.openQuoteCard(id);
       if (e.target.closest('.edit-btn')) return this.openBookModal(id);
       const book = UI.books.find((b) => b.id === id);
-      if (book) this.openBookModal(id); // spines/rows open editor on click
+      if (book) this.openBookModal(id); // spines/rows/series open editor on click
     });
     // stats modal recent items open the book too
     document.getElementById('statsContainer').addEventListener('click', (e) => {
@@ -206,6 +308,8 @@ const App = {
   bindBookForm() {
     const form = document.getElementById('bookForm');
     document.getElementById('addTranslationBtn').addEventListener('click', () => this.addTranslationRow());
+    document.getElementById('addQuoteBtn').addEventListener('click', () => this.addQuoteRow());
+    document.getElementById('exportBookMdBtn').addEventListener('click', () => this.exportCurrentBookMd());
 
     // star rating
     const stars = document.getElementById('starRatingInput');
@@ -269,6 +373,19 @@ const App = {
     row.querySelector('.remove-trans').addEventListener('click', () => row.remove());
   },
 
+  addQuoteRow(text = '') {
+    const container = document.getElementById('quotesContainer');
+    const row = document.createElement('div');
+    row.className = 'quote-row';
+    row.innerHTML = `
+      <span class="quote-row-icon"><i data-lucide="quote"></i></span>
+      <textarea class="quote-val" rows="2" placeholder="${UI.esc(I18N.t('field.quoteText'))}">${UI.esc(text)}</textarea>
+      <button type="button" class="icon-btn remove-quote" title="${UI.esc(I18N.t('action.remove'))}"><i data-lucide="x"></i></button>`;
+    container.appendChild(row);
+    if (window.lucide) lucide.createIcons();
+    row.querySelector('.remove-quote').addEventListener('click', () => row.remove());
+  },
+
   setStars(val, preview = false) {
     if (!preview) document.getElementById('rating').value = val;
     document.querySelectorAll('#starRatingInput .star-icon').forEach((s) => {
@@ -280,11 +397,21 @@ const App = {
     const form = document.getElementById('bookForm');
     form.reset();
     document.getElementById('translationsContainer').innerHTML = '';
+    document.getElementById('quotesContainer').innerHTML = '';
     document.getElementById('rating').value = '0';
     this.setStars(0, true);
     ['photoFrontPreview', 'photoSpinePreview'].forEach((p) => document.getElementById(p)?.classList.add('hidden'));
     this.editingId = id;
     document.getElementById('modalTitle').textContent = id ? I18N.t('action.editBook') : I18N.t('action.addBook');
+    // series name suggestions
+    const dl = document.getElementById('seriesList');
+    if (dl) {
+      const names = [...new Set(UI.books.filter((b) => b.hasSeries).map((b) => b.series.name))];
+      dl.innerHTML = names.map((n) => `<option value="${UI.esc(n)}"></option>`).join('');
+    }
+    // only offer Markdown export for an existing (saved) book
+    const mdBtn = document.getElementById('exportBookMdBtn');
+    if (mdBtn) mdBtn.classList.toggle('hidden', !id);
 
     if (id) {
       const book = UI.books.find((b) => b.id === id);
@@ -298,6 +425,10 @@ const App = {
         document.getElementById('pageCount').value = book.pageCount || '';
         document.getElementById('language').value = book.language || '';
         document.getElementById('genre').value = book.genre || '';
+        document.getElementById('seriesName').value = book.series.name || '';
+        document.getElementById('seriesVolume').value = book.series.volume || '';
+        document.getElementById('tags').value = book.tags.join(', ');
+        book.quotes.forEach((q) => this.addQuoteRow(q));
         document.getElementById('priceAmount').value = book.price.amount || '';
         document.getElementById('priceCurrency').value = book.price.currency || 'USD';
         document.getElementById('notes').value = book.notes || '';
@@ -323,6 +454,8 @@ const App = {
       const val = row.querySelector('.trans-val')?.value?.trim();
       if (lang && val) translations[lang] = val;
     });
+    const quotes = [...document.querySelectorAll('.quote-val')]
+      .map((t) => t.value.trim()).filter(Boolean);
     const data = {
       id: this.editingId || null,
       title: { main: document.getElementById('titleMain').value, translations },
@@ -335,6 +468,12 @@ const App = {
       pageCount: document.getElementById('pageCount').value,
       language: document.getElementById('language').value,
       genre: document.getElementById('genre').value,
+      series: {
+        name: document.getElementById('seriesName').value,
+        volume: document.getElementById('seriesVolume').value
+      },
+      tags: document.getElementById('tags').value,
+      quotes,
       price: { amount: document.getElementById('priceAmount').value, currency: document.getElementById('priceCurrency').value },
       rating: document.getElementById('rating').value,
       notes: document.getElementById('notes').value,
@@ -357,10 +496,153 @@ const App = {
     Store.DataFolder.save(UI.books, UI.settings).catch(() => {});
   },
 
+  /* ── Quote card ── */
+  openQuoteCard(id) {
+    const book = UI.books.find((b) => b.id === id);
+    if (!book || !book.quotes.length) return this.toast(I18N.t('quote.noQuote'), 'error');
+    this.quoteBook = book;
+    this.quote = { ...Store.DEFAULT_SETTINGS.quote, ...(UI.settings.quote || {}) };
+
+    const sel = document.getElementById('quoteSelect');
+    sel.innerHTML = book.quotes.map((q, i) => {
+      const label = q.length > 90 ? q.slice(0, 90) + '…' : q;
+      return `<option value="${i}">${UI.esc(label)}</option>`;
+    }).join('');
+    sel.value = '0';
+
+    this.syncQuoteControls();
+    this.renderQuoteCard();
+    this.openModal('quoteModal');
+  },
+
+  /* Reflect this.quote into every control in the modal. */
+  syncQuoteControls() {
+    const q = this.quote;
+    document.querySelectorAll('.quote-swatch').forEach((b) => b.classList.toggle('active', b.dataset.style === q.style));
+    document.querySelectorAll('#quoteFormatSeg [data-format]').forEach((b) => b.classList.toggle('active', b.dataset.format === q.format));
+    document.querySelectorAll('#quoteFontSeg [data-font]').forEach((b) => b.classList.toggle('active', b.dataset.font === q.font));
+    document.querySelectorAll('#quoteAlignSeg [data-align]').forEach((b) => b.classList.toggle('active', b.dataset.align === q.align));
+    document.querySelectorAll('input[data-quote]').forEach((el) => {
+      el.checked = q[`show${el.dataset.quote[0].toUpperCase()}${el.dataset.quote.slice(1)}`] !== false;
+    });
+    this.buildQuoteAccents();
+  },
+
+  buildQuoteAccents() {
+    const host = document.getElementById('quoteAccents');
+    if (!host) return;
+    const current = this.quote.accent || '';
+    host.innerHTML = `<button type="button" class="accent-dot auto${current === '' ? ' active' : ''}" data-accent="" title="${UI.esc(UI.settings.accent)}" style="--dot:${UI.settings.accent}"></button>` +
+      OPEN_SHELF.quoteAccents.map((c) =>
+        `<button type="button" class="accent-dot${current === c ? ' active' : ''}" data-accent="${c}" title="${c}" style="--dot:${c}"></button>`).join('');
+    host.querySelectorAll('.accent-dot').forEach((b) => {
+      b.addEventListener('click', () => this.setQuoteOption('accent', b.dataset.accent));
+    });
+  },
+
+  setQuoteOption(key, value) {
+    this.quote[key] = value;
+    UI.settings.quote = this.quote;
+    Store.saveSettings(UI.settings);
+    this.syncQuoteControls();
+    this.renderQuoteCard();
+  },
+
+  renderQuoteCard() {
+    const book = this.quoteBook;
+    if (!book || !this.quote) return;
+    const idx = parseInt(document.getElementById('quoteSelect').value) || 0;
+    const quote = book.quotes[idx] || '';
+    const q = this.quote;
+    const source = QuoteCard.render({
+      quote,
+      title: book.title.main,
+      author: book.author.name,
+      style: q.style,
+      format: q.format,
+      font: q.font,
+      align: q.align,
+      accent: q.accent || UI.settings.accent,
+      showTitle: q.showTitle,
+      showAuthor: q.showAuthor,
+      showBranding: q.showBranding,
+      showMarks: q.showMarks
+    });
+    const host = document.getElementById('quoteCanvas');
+    host.width = source.width;
+    host.height = source.height;
+    host.getContext('2d').drawImage(source, 0, 0);
+    this.quoteCanvas = source;
+  },
+
+  _quoteFilename() {
+    const book = this.quoteBook;
+    const slug = (book ? book.title.main : 'quote').toLowerCase()
+      .replace(/[^a-z0-9\u00c0-\u024f]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'quote';
+    return `openshelf-${slug}.png`;
+  },
+
+  bindQuoteCard() {
+    document.getElementById('quoteSelect').addEventListener('change', () => this.renderQuoteCard());
+
+    document.querySelectorAll('.quote-swatch').forEach((btn) => {
+      btn.addEventListener('click', () => this.setQuoteOption('style', btn.dataset.style));
+    });
+    document.querySelectorAll('#quoteFormatSeg [data-format]').forEach((btn) => {
+      btn.addEventListener('click', () => this.setQuoteOption('format', btn.dataset.format));
+    });
+    document.querySelectorAll('#quoteFontSeg [data-font]').forEach((btn) => {
+      btn.addEventListener('click', () => this.setQuoteOption('font', btn.dataset.font));
+    });
+    document.querySelectorAll('#quoteAlignSeg [data-align]').forEach((btn) => {
+      btn.addEventListener('click', () => this.setQuoteOption('align', btn.dataset.align));
+    });
+    document.querySelectorAll('input[data-quote]').forEach((el) => {
+      el.addEventListener('change', () => {
+        const key = `show${el.dataset.quote[0].toUpperCase()}${el.dataset.quote.slice(1)}`;
+        this.setQuoteOption(key, el.checked);
+      });
+    });
+
+    document.getElementById('quoteDownloadBtn').addEventListener('click', async () => {
+      if (this.quoteCanvas) await QuoteCard.download(this.quoteCanvas, this._quoteFilename());
+    });
+    document.getElementById('quoteCopyBtn').addEventListener('click', async () => {
+      if (!this.quoteCanvas) return;
+      const ok = await QuoteCard.copy(this.quoteCanvas);
+      this.toast(ok ? I18N.t('quote.copied') : I18N.t('quote.copyFailed'), ok ? 'success' : 'error');
+    });
+    document.getElementById('quoteShareBtn').addEventListener('click', async () => {
+      if (!this.quoteCanvas) return;
+      const book = this.quoteBook;
+      const text = book ? `${book.title.main} — ${book.author.name}` : 'OpenShelf';
+      const result = await QuoteCard.share(this.quoteCanvas, this._quoteFilename(), text);
+      if (result === 'shared') this.toast(I18N.t('quote.shared'));
+      else if (result === 'downloaded') this.toast(I18N.t('quote.shareFallback'));
+    });
+  },
+
+  /* ── Markdown export ── */
+  exportLibraryMd() {
+    const md = Markdown.library(UI.books, UI.settings);
+    Markdown.download(`openshelf-library-${new Date().toISOString().slice(0, 10)}.md`, md);
+    this.toast(I18N.t('toast.markdownExported'));
+  },
+
+  exportCurrentBookMd() {
+    if (!this.editingId) return;
+    const book = UI.books.find((b) => b.id === this.editingId);
+    if (!book) return;
+    const md = Markdown.book(book, UI.settings);
+    const slug = book.title.main.toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'book';
+    Markdown.download(`openshelf-${slug}.md`, md);
+    this.toast(I18N.t('toast.markdownExported'));
+  },
+
   /* ── Settings ── */
   openSettings() {
     const s = UI.settings;
-    document.getElementById('uiLanguageSelect').value = s.uiLang;
+    this.updateLanguageControl();
     document.getElementById('baseCurrencySelect').value = s.baseCurrency;
     document.getElementById('cardSizeSelect').value = s.cardSize;
     document.getElementById('densitySelect').value = s.density;
@@ -368,6 +650,9 @@ const App = {
     document.getElementById('animationsSelect').value = String(s.animations);
     document.getElementById('accentColorPicker').value = s.accent;
     document.querySelectorAll('input[name="theme"]').forEach((r) => { r.checked = r.value === s.theme; });
+    document.querySelectorAll('#displayToggles input[data-display]').forEach((el) => {
+      el.checked = s.display[el.dataset.display] !== false;
+    });
     this.renderAccentSwatches();
     this.updateFolderStatus();
     this.openModal('settingsModal');
@@ -401,15 +686,13 @@ const App = {
     bind('fontSelect', 'font');
     bind('animationsSelect', 'animations', (v) => v === 'true');
     bind('baseCurrencySelect', 'baseCurrency', (v) => { UI.refresh(); return v; });
-    // UI language needs an async reload
-    document.getElementById('uiLanguageSelect').addEventListener('change', async (e) => {
-      UI.settings.uiLang = e.target.value;
-      Store.saveSettings(UI.settings);
-      await I18N.setLocale(UI.settings.uiLang);
-      this.buildStaticSelects();
-      UI.refresh();
-      this.renderAccentSwatches();
-      this.openSettings();
+    // Shelf display toggles
+    document.querySelectorAll('#displayToggles input[data-display]').forEach((el) => {
+      el.addEventListener('change', () => {
+        UI.settings.display[el.dataset.display] = el.checked;
+        Store.saveSettings(UI.settings);
+        UI.displayBooks();
+      });
     });
 
     document.getElementById('saveSettingsBtn').addEventListener('click', () => {
@@ -424,6 +707,7 @@ const App = {
       UI.settings = Store.resetSettings();
       await I18N.setLocale(UI.settings.uiLang);
       this.buildStaticSelects();
+      this.updateLanguageControl();
       UI.refresh();
       this.openSettings();
       this.toast(I18N.t('toast.reset'));
@@ -449,6 +733,7 @@ const App = {
 
   /* ── Data tools ── */
   bindDataTools() {
+    document.getElementById('exportMarkdownBtn').addEventListener('click', () => this.exportLibraryMd());
     document.getElementById('exportDataBtn').addEventListener('click', () => {
       const blob = new Blob([Store.exportData()], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -513,7 +798,7 @@ const App = {
     try {
       const handle = await Store.DataFolder.getHandle();
       if (handle) {
-        status.textContent = `${I18N.t('settings.folderConnected')}: ${handle.name}`;
+        status.textContent = `${I18N.t('settings.folderConnected')}: ${handle.name}/${Store.DATA_DIR}`;
         status.classList.remove('muted');
         if (disconnectBtn) disconnectBtn.classList.remove('hidden');
       } else {

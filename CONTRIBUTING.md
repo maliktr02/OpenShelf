@@ -15,8 +15,31 @@ OpenShelf is deliberately simple to keep it easy to fork and host:
 
 1. **Vanilla only.** No frameworks, no bundler, no build step. Plain HTML, CSS and ES modules-free scripts.
 2. **Local-first.** User data never leaves the device. Anything networked must be optional and degrade gracefully.
-3. **Modular.** Shared state lives in `js/config.js`; keep concerns in their respective file.
+3. **Single source of truth.** Shared state lives in `js/config.js`; every version number comes from the root `version.js`; keep concerns in their respective file.
 4. **Accessible & responsive.** Keyboard navigation, ARIA labels and `data-i18n*` attributes on user-facing text.
+
+## Project structure
+
+```
+OpenShelf/
+├─ index.html          Single page shell (modals, forms, startup screen)
+├─ version.js          Single source of truth for version metadata & changelog
+├─ js/
+│  ├─ flags.js         Inline SVG country flags for the language picker
+│  ├─ config.js        Languages, currencies, themes, option lists
+│  ├─ i18n.js          Translation engine + embedded English fallback
+│  ├─ models.js        Book model (series, tags, quotes, …)
+│  ├─ store.js         Persistence (localStorage + optional /data folder)
+│  ├─ currency.js      Offline conversion rates
+│  ├─ charts.js        Dependency-free SVG charts
+│  ├─ quotecard.js     Canvas quote-card renderer
+│  ├─ markdown.js      Markdown export
+│  ├─ ui.js            Rendering, filtering, sorting, statistics
+│  └─ app.js           Controller: events, modals, settings, data tools
+├─ css/                base · layout · components
+├─ locales/            One file per interface language
+└─ data/               Optional self-contained data folder (books.json, …)
+```
 
 ## Development setup
 
@@ -28,6 +51,23 @@ There is no installation step:
 
 For quicker iteration you can serve the folder with any static server (e.g. `npx serve .`), but `file://` works too.
 
+## Data & persistence
+
+- The primary store is `localStorage`, so the app works over `file://` with no setup.
+- On Chromium browsers the user may optionally connect a **data folder**. OpenShelf then keeps everything inside a `data/` subdirectory of that folder:
+  - `books.json` — the library
+  - `settings.json` — preferences
+  - `meta.json` — app version, schema version and timestamp
+- Backup/restore uses a single JSON file whose `version` and `schema` fields come from `version.js`. Bump `schemaVersion` there whenever the exported shape changes.
+
+## Versioning
+
+`version.js` is the only place a version string may live. It exposes `OPEN_SHELF_VERSION` (name, version, codename, release date, schema, repository, changelog) and a small `Version` helper (parse/compare/label). `js/config.js` spreads it into `OPEN_SHELF`, and the Info panel renders it. To release:
+
+1. Bump `version` (semver) and `schemaVersion` (only if data shape changed) in `version.js`.
+2. Add a new entry at the top of `changelog`.
+3. Update the version badge in `README.md` if present.
+
 ## Code style
 
 - **Indentation:** 2 spaces (see `.editorconfig`).
@@ -35,17 +75,17 @@ For quicker iteration you can serve the folder with any static server (e.g. `npx
 - **JavaScript:** `const`/`let`, clear names, small functions. Run `node --check js/<file>.js` before committing.
 - **CSS:** use the design tokens in `css/base.css` (`--accent`, `--surface`, etc.) instead of hard-coded colours; add new rules to the most relevant file.
 - **HTML:** every user-facing string needs a `data-i18n`, `data-i18n-placeholder`, `data-i18n-title` or `data-i18n-aria` attribute.
-- **Icons:** use Lucide names via `data-lucide="..."`. Do not add emoji.
+- **Icons:** use Lucide names via `data-lucide="..."`. Do not add emoji. Flags are inline SVG in `js/flags.js`.
 
 ## Adding or editing a translation
 
-1. Copy `locales/tr.js` (or view `js/i18n.js`) for the reference English key set.
+1. Copy `locales/tr.js` (or read the embedded fallback in `js/i18n.js`) for the reference English key set.
 2. Create `locales/<code>.js` that calls `I18N.register('<code>', { ... })`.
-3. Cover every key. Verify parity:
+3. Cover **every** key in `I18N.en`. Missing keys silently fall back to English, which hides gaps, so verify parity across all locales:
    ```bash
-   node -e "const en=Object.keys(require('./js/i18n.js')); console.log(en.length)"
+   node -e "const fs=require('fs'),vm=require('vm');const c={window:null};c.window=c;c.document={documentElement:{setAttribute(){}},querySelectorAll(){return[]},createElement(){return{}}};vm.createContext(c);['version.js','js/flags.js','js/config.js','js/i18n.js'].forEach(f=>vm.runInContext(fs.readFileSync(f,'utf8'),c));const en=Object.keys(c.I18N.en);fs.readdirSync('locales').forEach(f=>{vm.runInContext(fs.readFileSync('locales/'+f,'utf8'),c);const d=c.I18N.cache[f.replace('.js','')]||{};const m=en.filter(k=>d[k]===undefined);console.log(f,m.length?'MISSING '+m.join(','):'OK')});"
    ```
-4. If it is a new language, add it to `uiLocales` in `js/config.js` and mark `rtl: true` for right-to-left scripts.
+4. New language? Add it to `uiLocales` in `js/config.js`, mark `rtl: true` for right-to-left scripts, and add a matching flag in `js/flags.js`.
 5. Never translate the product name **OpenShelf**.
 
 ## Reporting issues

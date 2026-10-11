@@ -9,6 +9,7 @@ class Book {
     const author = data.author || {};
     const price = data.price || {};
     const photos = data.photos || {};
+    const series = data.series || {};
 
     this.id = data.id || (crypto.randomUUID ? crypto.randomUUID() : Book._uuid());
     this.title = {
@@ -24,6 +25,13 @@ class Book {
     this.pageCount = parseInt(data.pageCount) || 0;
     this.language = String(data.language || '').trim();
     this.genre = String(data.genre || '').trim();
+    this.series = {
+      name: String(series.name || '').trim(),
+      volume: series.volume !== undefined && series.volume !== '' && series.volume != null
+        ? Math.max(1, parseInt(series.volume) || 1) : null
+    };
+    this.tags = Book._cleanList(data.tags);
+    this.quotes = Book._cleanList(data.quotes);
     this.price = {
       amount: data.price && data.price.amount !== '' && data.price.amount != null ? parseFloat(data.price.amount) || 0 : 0,
       currency: String(price.currency || 'USD').toUpperCase()
@@ -49,6 +57,24 @@ class Book {
     return out;
   }
 
+  /** Cleans a list of strings (tags or quotes) from an array or a comma string. */
+  static _cleanList(value) {
+    let arr = value;
+    if (typeof value === 'string') arr = value.split(',');
+    if (!Array.isArray(arr)) return [];
+    const seen = new Set();
+    const out = [];
+    for (const raw of arr) {
+      const s = String(raw == null ? '' : raw).trim();
+      if (!s) continue;
+      const key = s.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(s);
+    }
+    return out;
+  }
+
   static _uuid() {
     return 'book-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
   }
@@ -67,6 +93,9 @@ class Book {
       pageCount: this.pageCount,
       language: this.language,
       genre: this.genre,
+      series: this.series,
+      tags: this.tags,
+      quotes: this.quotes,
       price: this.price,
       rating: this.rating,
       notes: this.notes,
@@ -74,6 +103,11 @@ class Book {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt
     };
+  }
+
+  /** True when the book is part of a named series. */
+  get hasSeries() {
+    return this.series.name.length > 0;
   }
 
   /** True when the record satisfies the mandatory fields. */
